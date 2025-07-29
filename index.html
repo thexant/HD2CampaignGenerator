@@ -9,7 +9,7 @@
 <body>
     <header>
         <h1>HELLDIVERS 2 Campaign Generator</h1>
-        <p>Generate multi-mission campaigns using live galactic war data</p>
+        <p>Generate epic multi-mission campaigns using live galactic war data</p>
     </header>
 
     <main>
@@ -21,20 +21,20 @@
             
             <div id="preferences-content" class="preferences-content">
             
-            <!-- Tour of War Mode - Always Enabled (Hidden) -->
-            <div class="preference-group tour-mode-group" style="display: none;">
+            <!-- Tour of War Mode Toggle -->
+            <div class="preference-group tour-mode-group">
                 <div class="tour-mode-toggle">
-                    <input type="checkbox" id="tour-mode-checkbox" checked>
+                    <input type="checkbox" id="tour-mode-checkbox">
                     <label for="tour-mode-checkbox">
                         <span class="tour-mode-label">Tour of War Mode</span>
-                        <span class="tour-mode-status" id="tour-mode-status">ON</span>
+                        <span class="tour-mode-status" id="tour-mode-status">OFF</span>
                     </label>
-                    <button id="tour-mode-activate" class="tour-activate-btn">Activate Tour</button>
+                    <button id="tour-mode-activate" class="tour-activate-btn" style="display: none;">Activate Tour</button>
                 </div>
-                <p class="tour-mode-description">Experience guided mission-by-mission progression with briefings</p>
+                <p class="tour-mode-description">Experience guided mission-by-mission progression with democracy officer briefings</p>
             </div>
 
-            <div class="preference-group" id="campaign-length-group" style="display: none;">
+            <div class="preference-group" id="campaign-length-group">
                 <label for="campaign-length">Campaign Length:</label>
                 <select id="campaign-length">
                     <option value="random">Random (3-7 missions)</option>
@@ -52,8 +52,8 @@
                 </select>
             </div>
 
-            <!-- Tour Length Selection -->
-            <div class="preference-group" id="tour-length-group">
+            <!-- Tour Length Selection (hidden by default) -->
+            <div class="preference-group" id="tour-length-group" style="display: none;">
                 <label for="tour-length">Tour Length:</label>
                 <select id="tour-length">
                     <option value="quick">Quick (2-3 missions)</option>
@@ -69,7 +69,7 @@
                 <input type="number" id="custom-length-input" min="1" max="50" value="5">
             </div>
 
-            <div class="preference-group" style="display: none;">
+            <div class="preference-group">
                 <label for="faction-preference">Enemy Faction:</label>
                 <select id="faction-preference">
                     <option value="random">Random</option>
@@ -80,7 +80,7 @@
                 </select>
             </div>
 
-            <div class="preference-group" style="display: none;">
+            <div class="preference-group">
                 <label for="difficulty-preference">Difficulty Range:</label>
                 <select id="difficulty-preference">
                     <option value="random">Any Difficulty</option>
@@ -91,7 +91,7 @@
                 </select>
             </div>
 
-            <div class="preference-group" style="display: none;">
+            <div class="preference-group">
                 <label for="biome-preference">Planet Biomes:</label>
                 <select id="biome-preference">
                     <option value="random">Any Biome</option>
@@ -103,7 +103,7 @@
                 </select>
             </div>
 
-            <div class="preference-group" style="display: none;">
+            <div class="preference-group">
                 <label for="mission-type-preference">Mission Type:</label>
                 <select id="mission-type-preference">
                     <option value="both">Both Liberation & Defense</option>
@@ -112,7 +112,7 @@
                 </select>
             </div>
 
-            <div class="preference-group" style="display: none;">
+            <div class="preference-group">
                 <label for="target-type-preference">Target Type:</label>
                 <select id="target-type-preference">
                     <option value="mixed">Planets & Cities</option>
@@ -123,8 +123,8 @@
             </div>
 
             <div class="campaign-actions">
-                <button id="generate-campaign" class="generate-btn" style="display: none;">Generate Campaign</button>
-                <button id="start-tour" class="generate-btn">Start Tour</button>
+                <button id="generate-campaign" class="generate-btn">Generate Campaign</button>
+                <button id="start-tour" class="generate-btn" style="display: none;">Start Tour</button>
                 <button id="regenerate-campaign" class="regenerate-btn" style="display: none;">Regenerate Campaign</button>
                 <button id="clear-cache" class="retry-btn" onclick="apiService.clearCache()" style="margin-left: 10px;">Clear Cache & Force Refresh</button>
             </div>
@@ -154,7 +154,7 @@
             <!-- Democracy Officer Briefing -->
             <div class="democracy-briefing" id="democracy-briefing" style="display: none;">
                 <div class="briefing-header">
-                    <h3>Briefing</h3>
+                    <h3>Democracy Officer Briefing</h3>
                 </div>
                 <div class="briefing-content" id="briefing-content">
                     [Briefing content will appear here]
@@ -244,7 +244,7 @@
     </main>
 
     <footer>
-        <p>• Unofficial HELLDIVERS 2 Project</p>
+        <p>• Unofficial HELLDIVERS 2 tool </p>
     </footer>
 
     <script src="data/mission-types.js"></script>
