@@ -61,7 +61,7 @@ class App {
     setupPreferenceListeners() {
         const preferenceIds = [
             'campaign-length', 'faction-preference', 'difficulty-preference', 'biome-preference',
-            'mission-type-preference', 'target-type-preference', 'tour-length', 'tour-theme', 'tour-faction'
+            'mission-type-preference', 'target-type-preference', 'tour-length', 'tour-theme', 'tour-faction', 'tour-difficulty'
         ];
 
         preferenceIds.forEach(id => {
@@ -157,6 +157,7 @@ class App {
         // Tour-specific elements to show/hide
         const tourThemeGroup = document.getElementById('tour-theme-group');
         const tourFactionGroup = document.getElementById('tour-faction-group');
+        const tourDifficultyGroup = document.getElementById('tour-difficulty-group');
 
         if (this.tourMode) {
             status.textContent = 'ON';
@@ -168,6 +169,7 @@ class App {
 
             // Show tour-specific elements
             if (tourThemeGroup) tourThemeGroup.style.display = 'block';
+            if (tourDifficultyGroup) tourDifficultyGroup.style.display = 'block';
             // Faction group visibility is handled by handleTourThemeChange
 
             // Hide other preference groups
@@ -185,6 +187,7 @@ class App {
             // Hide tour-specific elements
             if (tourThemeGroup) tourThemeGroup.style.display = 'none';
             if (tourFactionGroup) tourFactionGroup.style.display = 'none';
+            if (tourDifficultyGroup) tourDifficultyGroup.style.display = 'none';
 
             // Show other preference groups
             preferencesToHide.forEach(group => {
@@ -835,7 +838,7 @@ class App {
             this.applyThemeToMission(planet, campaignTheme, i, tourLength);
 
             // Calculate scaled difficulty (starts easier, gets harder)
-            const scaledDifficulty = this.calculateScaledDifficulty(i, tourLength);
+            const scaledDifficulty = this.calculateScaledDifficulty(i, tourLength, preferences.tourDifficulty);
             
             const mission = missionGenerator.generateMission(planet, i, tourLength, {
                 difficulty: scaledDifficulty,
@@ -1000,21 +1003,37 @@ class App {
         return campaignTheme.type !== 'single_planet';
     }
 
-    calculateScaledDifficulty(missionIndex, totalMissions) {
-        // Simple approach: linear scaling with random variation
-        // Scale from roughly 1-2 at start to roughly 7-10 at end, regardless of length
+    calculateScaledDifficulty(missionIndex, totalMissions, difficultyPreference = 'all') {
+        // Handle random difficulty selection
+        if (difficultyPreference === 'random') {
+            const options = ['easy', 'medium', 'hard', 'all'];
+            difficultyPreference = options[Math.floor(Math.random() * options.length)];
+        }
+
+        // Define difficulty ranges
+        const difficultyRanges = {
+            'easy': { min: 1, max: 4 },
+            'medium': { min: 3, max: 6 },
+            'hard': { min: 6, max: 10 },
+            'all': { min: 1, max: 10 }
+        };
+
+        const range = difficultyRanges[difficultyPreference] || difficultyRanges['all'];
+        
+        // Linear scaling within the selected range
         const progress = missionIndex / (totalMissions - 1);
         
-        // Base difficulty increases from 2 to 8 (leaving room for variation)
-        const baseDifficulty = Math.round(2 + progress * 6);
+        // Base difficulty scales from min to max within range
+        const baseDifficulty = Math.round(range.min + progress * (range.max - range.min));
         
-        // Random variation gets larger as tour progresses
-        const maxVariation = Math.floor(1 + progress * 2); // 1 to 3
+        // Random variation (smaller for constrained ranges)
+        const rangeSize = range.max - range.min;
+        const maxVariation = Math.max(1, Math.floor(rangeSize * 0.25)); // 25% of range size
         const variation = Math.floor(Math.random() * (maxVariation * 2 + 1)) - maxVariation;
         
         // Final difficulty with bounds
         const finalDifficulty = baseDifficulty + variation;
-        return Math.max(1, Math.min(10, finalDifficulty));
+        return Math.max(range.min, Math.min(range.max, finalDifficulty));
     }
 
     getDifficultyName(level) {
@@ -1123,7 +1142,8 @@ class App {
         return {
             tourLength: document.getElementById('tour-length')?.value || 'regular',
             tourTheme: document.getElementById('tour-theme')?.value || 'random',
-            tourFaction: document.getElementById('tour-faction')?.value || 'random'
+            tourFaction: document.getElementById('tour-faction')?.value || 'random',
+            tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all'
         };
     }
 
@@ -1377,12 +1397,14 @@ class App {
         const tourLengthGroup = document.getElementById('tour-length-group');
         const tourThemeGroup = document.getElementById('tour-theme-group');
         const tourFactionGroup = document.getElementById('tour-faction-group');
+        const tourDifficultyGroup = document.getElementById('tour-difficulty-group');
         const generateBtn = document.getElementById('generate-campaign');
         const startTourBtn = document.getElementById('start-tour');
         
         if (campaignLengthGroup) campaignLengthGroup.style.display = 'none';
         if (tourLengthGroup) tourLengthGroup.style.display = 'block';
         if (tourThemeGroup) tourThemeGroup.style.display = 'block';
+        if (tourDifficultyGroup) tourDifficultyGroup.style.display = 'block';
         // Faction group visibility is handled by current theme selection
         if (tourFactionGroup) {
             const tourThemeSelect = document.getElementById('tour-theme');
