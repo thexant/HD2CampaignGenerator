@@ -2,7 +2,7 @@ class App {
     constructor() {
         this.isInitialized = false;
         this.preferences = this.loadPreferences();
-        this.tourMode = false;
+        this.tourMode = true; // Always start with tour mode enabled
         this.currentTour = null;
         this.init();
     }
@@ -499,6 +499,18 @@ class App {
     initializePreferences() {
         this.applyPreferences();
         this.loadPreferencesVisibility();
+        this.initializePermanentTourMode();
+    }
+    
+    initializePermanentTourMode() {
+        // Force tour mode to be enabled and properly displayed
+        const tourCheckbox = document.getElementById('tour-mode-checkbox');
+        if (tourCheckbox) {
+            tourCheckbox.checked = true;
+        }
+        
+        // Force the UI to match permanent tour mode
+        this.handleTourModeToggle({ target: { checked: true } });
     }
 
     loadPreferencesVisibility() {
@@ -1216,16 +1228,37 @@ class App {
 
     handleReturnToCampaigns() {
         this.currentTour = null;
-        this.tourMode = false;
+        // DO NOT disable tour mode - keep it always on
+        this.tourMode = true;
         
-        // Reset tour mode checkbox
+        // Keep tour mode checkbox checked and maintain state
         const tourCheckbox = document.getElementById('tour-mode-checkbox');
         if (tourCheckbox) {
-            tourCheckbox.checked = false;
-            this.handleTourModeToggle({ target: { checked: false } });
+            tourCheckbox.checked = true;
         }
         
-        // Hide tour display, show campaign controls
+        // Ensure only tour length is visible, hide all other preferences
+        const campaignLengthGroup = document.getElementById('campaign-length-group');
+        const tourLengthGroup = document.getElementById('tour-length-group');
+        const generateBtn = document.getElementById('generate-campaign');
+        const startTourBtn = document.getElementById('start-tour');
+        
+        if (campaignLengthGroup) campaignLengthGroup.style.display = 'none';
+        if (tourLengthGroup) tourLengthGroup.style.display = 'block';
+        if (generateBtn) generateBtn.style.display = 'none';
+        if (startTourBtn) startTourBtn.style.display = 'inline-block';
+        
+        // Hide all other preference groups
+        const preferencesToHide = [
+            'faction-preference', 'difficulty-preference', 'biome-preference', 
+            'mission-type-preference', 'target-type-preference', 'custom-length-group'
+        ].map(id => document.getElementById(id)?.closest('.preference-group'));
+        
+        preferencesToHide.forEach(group => {
+            if (group) group.style.display = 'none';
+        });
+        
+        // Hide tour display screens
         document.getElementById('tour-display').style.display = 'none';
         document.getElementById('democracy-briefing').style.display = 'none';
         document.getElementById('tour-completion').style.display = 'none';
