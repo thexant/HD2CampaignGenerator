@@ -326,26 +326,270 @@ footer {
 }
 
 @media (max-width: 768px) {
-    header h1 {
-        font-size: 2rem;
+    /* Header improvements */
+    header {
+        padding: 1.5rem 1rem;
     }
     
-    .generator-controls, .campaign-display {
+    header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    header p {
+        font-size: 1rem;
+    }
+    
+    /* Main container with better mobile spacing */
+    main {
+        padding: 1.5rem 1rem;
+    }
+    
+    /* Generator controls with better mobile padding */
+    .generator-controls, .campaign-display, .tour-display {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Preference groups with better mobile spacing */
+    .preference-group {
+        margin-bottom: 2rem;
+    }
+    
+    .preference-group label {
+        margin-bottom: 0.75rem;
+        font-size: 1rem;
+    }
+    
+    /* Form elements with mobile-friendly sizing */
+    .preference-group select, .preference-group input {
         padding: 1rem;
+        font-size: 1rem;
+        min-height: 48px; /* Touch-friendly target size */
+    }
+    
+    /* Button improvements for mobile */
+    .generate-btn, .regenerate-btn, .retry-btn, .progress-btn, .fail-btn {
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+        min-height: 48px;
+        width: 100%;
+        margin-bottom: 0.75rem;
+    }
+    
+    .toggle-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        min-height: 44px;
+    }
+    
+    /* Campaign actions layout */
+    .campaign-actions {
+        margin-top: 2rem;
+        padding-top: 2rem;
+    }
+    
+    /* Tour actions mobile layout */
+    .tour-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 2rem;
+    }
+    
+    .completion-actions, .failure-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 2rem;
+    }
+    
+    /* Mission card improvements */
+    .mission-card {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
     }
     
     .mission-header {
         flex-direction: column;
         text-align: center;
-        gap: 1rem;
+        gap: 1.25rem;
     }
     
     .mission-title {
         margin-left: 0;
     }
     
+    .mission-title h3 {
+        font-size: 1.3rem;
+        margin-bottom: 0.5rem;
+    }
+    
     .mission-details {
         grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+    
+    .detail-item {
+        padding: 1rem;
+    }
+    
+    .mission-objectives {
+        padding: 1.25rem;
+        margin-top: 1rem;
+    }
+    
+    /* Squad names input grid for mobile */
+    .squad-names-inputs {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .squad-names-inputs input {
+        padding: 0.75rem;
+        font-size: 1rem;
+        min-height: 48px;
+    }
+    
+    /* Dialog improvements for mobile */
+    .death-tracking-dialog {
+        padding: 1.5rem;
+        width: 95%;
+        max-width: none;
+    }
+    
+    .dialog-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .dialog-actions button {
+        width: 100%;
+        min-height: 48px;
+    }
+    
+    /* Casualty checkboxes mobile layout */
+    .casualty-checkbox {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .casualty-checkbox input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+    }
+    
+    /* Completion screens mobile improvements */
+    .tour-completion, .tour-failure, .legacies-completion {
+        padding: 2rem 1.5rem;
+    }
+    
+    .completion-header h2, .failure-header h2 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .completion-header h3, .failure-header h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Briefing improvements */
+    .democracy-briefing {
+        padding: 1.5rem;
+    }
+    
+    .briefing-content {
+        padding: 1.25rem;
+        font-size: 1rem;
+        line-height: 1.7;
+    }
+    
+    /* Tour progress mobile layout */
+    .tour-progress {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .tour-info h2 {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .progress-indicator {
+        font-size: 1.1rem;
+    }
+}
+
+/* Additional improvements for smaller mobile screens */
+@media (max-width: 480px) {
+    /* Even more generous spacing for small phones */
+    .generator-controls, .campaign-display, .tour-display {
+        padding: 1rem;
+    }
+    
+    main {
+        padding: 1rem 0.75rem;
+    }
+    
+    header {
+        padding: 1rem 0.75rem;
+    }
+    
+    header h1 {
+        font-size: 1.75rem;
+    }
+    
+    /* Smaller buttons for very small screens but still touch-friendly */
+    .generate-btn, .regenerate-btn, .retry-btn, .progress-btn, .fail-btn {
+        padding: 0.875rem 1.25rem;
+        font-size: 0.95rem;
+    }
+    
+    /* Mission cards more compact */
+    .mission-card {
+        padding: 1.25rem;
+    }
+    
+    .mission-objectives {
+        padding: 1rem;
+    }
+    
+    /* Dialog adjustments */
+    .death-tracking-dialog {
+        padding: 1.25rem;
+        width: 97%;
+    }
+}
+
+/* Tablet landscape and larger mobile improvements */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* Tablet-specific optimizations */
+    .generator-controls, .campaign-display, .tour-display {
+        padding: 2rem;
+    }
+    
+    .mission-details {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    
+    .squad-names-inputs {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    /* Action buttons can be side by side on tablets */
+    .tour-actions, .completion-actions, .failure-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .tour-actions button, .completion-actions button, .failure-actions button {
+        flex: 1;
+        min-width: 200px;
+        width: auto;
     }
 }
 
@@ -423,6 +667,18 @@ footer {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.background-loading-indicator {
+    display: inline-block;
+    margin-left: 1rem;
+    color: #ffd700;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.background-loading-indicator small {
+    font-size: 0.9rem;
+}
+
 /* Tour of War Mode Styles */
 .tour-mode-group {
     border: 2px solid #ffd700;
@@ -488,6 +744,228 @@ footer {
     font-size: 0.9rem;
     font-style: italic;
     margin-top: 0.5rem;
+}
+
+/* Legacies Mode Styles */
+.legacies-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.legacies-mode-toggle input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #ff6b6b;
+}
+
+.legacies-mode-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.legacies-mode-status {
+    padding: 0.2rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    background: #666;
+    color: white;
+}
+
+.legacies-mode-status.active {
+    background: #ff6b6b;
+    color: white;
+}
+
+.legacies-mode-description {
+    color: #cccccc;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+}
+
+.squad-names-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.squad-names-inputs input {
+    padding: 0.5rem;
+    border: 2px solid #444;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #ffffff;
+    font-size: 0.9rem;
+}
+
+.squad-names-inputs input:focus {
+    outline: none;
+    border-color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.lives-explanation, .custom-lives-explanation {
+    color: #cccccc;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    border-left: 3px solid #ff6b6b;
+}
+
+.custom-lives-explanation span {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+/* Death Tracking Dialog */
+.death-tracking-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 2px solid #ff6b6b;
+    border-radius: 10px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.death-tracking-dialog::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+}
+
+.dialog-header h3 {
+    color: #ff6b6b;
+    text-align: center;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.dialog-content p {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #cccccc;
+}
+
+.casualty-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.casualty-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.casualty-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #ff6b6b;
+}
+
+.casualty-checkbox label {
+    color: #ffffff;
+    cursor: pointer;
+    flex: 1;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* Legacies Completion Screen */
+.legacies-completion {
+    text-align: center;
+    padding: 2rem;
+}
+
+.survivors-section, .kia-section {
+    margin: 2rem 0;
+}
+
+.survivors-section h4, .kia-section h4 {
+    color: #ffd700;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.survivors-list, .kia-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.survivor-entry {
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid #4CAF50;
+    padding: 0.8rem;
+    border-radius: 5px;
+    border-left: 4px solid #4CAF50;
+}
+
+.kia-entry {
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid #f44336;
+    padding: 0.8rem;
+    border-radius: 5px;
+    border-left: 4px solid #f44336;
+    text-align: left;
+}
+
+.kia-name {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #ff6b6b;
+}
+
+.kia-details {
+    font-size: 0.9rem;
+    color: #cccccc;
+    line-height: 1.4;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.no-survivors {
+    background: rgba(156, 39, 176, 0.2);
+    border: 1px solid #9c27b0;
+    padding: 0.8rem;
+    border-radius: 5px;
+    border-left: 4px solid #9c27b0;
+    font-style: italic;
+    color: #cccccc;
 }
 
 /* Tour Display Styles */

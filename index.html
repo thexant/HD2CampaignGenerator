@@ -64,6 +64,18 @@
                 </select>
             </div>
 
+            <!-- Legacies Mode Toggle -->
+            <div class="preference-group" id="legacies-mode-group">
+                <div class="legacies-mode-toggle">
+                    <input type="checkbox" id="legacies-mode-checkbox">
+                    <label for="legacies-mode-checkbox">
+                        <span class="legacies-mode-label">Legacies Mode</span>
+                        <span class="legacies-mode-status" id="legacies-mode-status">OFF</span>
+                    </label>
+                </div>
+                <p class="legacies-mode-description">Track squad member lives and deaths throughout your tour</p>
+            </div>
+
             <!-- Tour Theme Selection -->
             <div class="preference-group" id="tour-theme-group">
                 <label for="tour-theme">Tour Theme:</label>
@@ -102,6 +114,51 @@
                 </select>
             </div>
 
+            <!-- Mission Type Preference Selection -->
+            <div class="preference-group" id="tour-mission-type-preference-group">
+                <label for="tour-mission-type-preference">Mission Type Preference:</label>
+                <select id="tour-mission-type-preference">
+                    <option value="either" selected>Either (Mixed)</option>
+                    <option value="liberation">Liberation Focus</option>
+                    <option value="defense">Defense Focus</option>
+                </select>
+            </div>
+
+            <!-- Legacies Mode Squad Names -->
+            <div class="preference-group" id="squad-names-group" style="display: none;">
+                <label>Squad Member Names (up to 4):</label>
+                <div class="squad-names-inputs">
+                    <input type="text" id="squad-member-1" placeholder="Squad Member 1" maxlength="30">
+                    <input type="text" id="squad-member-2" placeholder="Squad Member 2" maxlength="30">
+                    <input type="text" id="squad-member-3" placeholder="Squad Member 3" maxlength="30">
+                    <input type="text" id="squad-member-4" placeholder="Squad Member 4" maxlength="30">
+                </div>
+            </div>
+
+            <!-- Legacies Mode Lives Options -->
+            <div class="preference-group" id="lives-options-group" style="display: none;">
+                <label for="lives-mode">Lives Mode:</label>
+                <select id="lives-mode">
+                    <option value="default" selected>Default (2 lives per 3 missions)</option>
+                    <option value="permadeath">Perma-death (1 life for entire tour)</option>
+                    <option value="custom">Customizable</option>
+                </select>
+                <div class="lives-explanation" id="lives-explanation">
+                    Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).
+                </div>
+            </div>
+
+            <!-- Custom Lives Settings -->
+            <div class="preference-group" id="custom-lives-group" style="display: none;">
+                <label for="custom-lives-count">Lives per cycle:</label>
+                <input type="number" id="custom-lives-count" min="1" max="10" value="2">
+                <label for="custom-mission-cycle">Mission cycle length:</label>
+                <input type="number" id="custom-mission-cycle" min="1" max="10" value="3">
+                <div class="custom-lives-explanation">
+                    Players get <span id="lives-display">2</span> lives every <span id="cycle-display">3</span> missions.
+                </div>
+            </div>
+
             <!-- Faction Selection (shown only when faction_focused theme is selected) -->
             <div class="preference-group" id="tour-faction-group" style="display: none;">
                 <label for="tour-faction">Enemy Faction:</label>
@@ -110,6 +167,15 @@
                     <option value="Terminids">Terminids</option>
                     <option value="Automatons">Automatons</option>
                     <option value="Illuminate">Illuminate</option>
+                </select>
+            </div>
+
+            <!-- Planet Selection (shown only when single_planet theme is selected) -->
+            <div class="preference-group" id="tour-planet-group" style="display: none;">
+                <label for="tour-planet">Specific Planet:</label>
+                <select id="tour-planet">
+                    <option value="random">Random Available Planet</option>
+                    <!-- Planet options will be populated dynamically -->
                 </select>
             </div>
 
@@ -174,6 +240,9 @@
             <div class="campaign-actions">
                 <button id="generate-campaign" class="generate-btn" style="display: none;">Generate Campaign</button>
                 <button id="start-tour" class="generate-btn">Start Tour</button>
+                <div id="background-loading-indicator" class="background-loading-indicator" style="display: none;">
+                    <small>📡 Updating galactic war data...</small>
+                </div>
                 <button id="regenerate-campaign" class="regenerate-btn" style="display: none;">Regenerate Campaign</button>
                 <button id="clear-cache" class="retry-btn" onclick="apiService.clearCache()" style="margin-left: 10px;">Clear Cache & Force Refresh</button>
             </div>
@@ -276,6 +345,61 @@
                 <div class="failure-actions">
                     <button id="retry-tour" class="generate-btn">Retry Tour</button>
                     <button id="return-to-campaigns-failed" class="retry-btn">Return to Campaign Generator</button>
+                </div>
+            </div>
+
+            <!-- Death Tracking Dialog -->
+            <div class="death-tracking-dialog" id="death-tracking-dialog" style="display: none;">
+                <div class="dialog-header">
+                    <h3>Mission Report: Casualties</h3>
+                </div>
+                <div class="dialog-content">
+                    <p>Did any squad members die during this mission?</p>
+                    <div class="casualty-checkboxes" id="casualty-checkboxes">
+                        <!-- Squad member checkboxes will be dynamically generated -->
+                    </div>
+                </div>
+                <div class="dialog-actions">
+                    <button id="confirm-casualties" class="generate-btn">Confirm</button>
+                    <button id="no-casualties" class="retry-btn">No Casualties</button>
+                </div>
+            </div>
+
+            <!-- Legacies Completion Screen -->
+            <div class="legacies-completion" id="legacies-completion" style="display: none;">
+                <div class="completion-header">
+                    <h2>Tour of War Complete!</h2>
+                    <h3 id="legacies-completed-tour-name">[Tour Name]</h3>
+                </div>
+                <div class="completion-content">
+                    <p class="completion-message">Your Tour of War is complete, Helldiver. Through multiple campaigns and countless sacrifices, you have proven that Democracy's defenders are truly unstoppable.</p>
+                    
+                    <div class="completion-stats" id="legacies-completion-stats">
+                        <!-- Tour stats will be displayed here -->
+                    </div>
+
+                    <div class="survivors-section">
+                        <h4>Surviving Helldivers</h4>
+                        <div class="survivors-list" id="survivors-list">
+                            <!-- Living squad members will be listed here -->
+                        </div>
+                    </div>
+
+                    <div class="kia-section" id="kia-section" style="display: none;">
+                        <h4>Helldivers KIA - Replaced by Reinforcements</h4>
+                        <div class="kia-list" id="kia-list">
+                            <!-- Dead squad members will be listed here -->
+                        </div>
+                    </div>
+                    
+                    <div class="completion-message-final">
+                        <p><strong>Your victories across multiple worlds have demonstrated the true power of Managed Democracy. Each battlefield you conquered brought Freedom to those who had forgotten its meaning.</strong></p>
+                        <p><em>"The Ministry of Truth records your achievements for future generations. You have shown that when Democracy calls, her children answer with unwavering resolve."</em></p>
+                    </div>
+                </div>
+                <div class="completion-actions">
+                    <button id="start-new-legacies-tour" class="generate-btn">Start New Tour</button>
+                    <button id="return-to-campaigns-legacies" class="retry-btn">Return to Campaign Generator</button>
                 </div>
             </div>
         </section>
