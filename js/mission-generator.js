@@ -90,8 +90,13 @@ class MissionGenerator {
     }
 
     selectDifficulty(preference, missionIndex, totalMissions, isTourMode = false, previousMissions = []) {
-        // Tour of War mode always uses its own scaling logic, ignoring preferences
-        if (isTourMode) {
+        // If a specific difficulty level is passed (number), use it directly
+        if (typeof preference === 'number' && preference >= 1 && preference <= 10) {
+            return this.difficulties.find(d => d.level === preference);
+        }
+        
+        // Tour of War mode uses its own scaling logic only if no specific difficulty is provided
+        if (isTourMode && (typeof preference !== 'number')) {
             return this.calculateTourDifficulty(missionIndex, totalMissions, previousMissions);
         }
         
