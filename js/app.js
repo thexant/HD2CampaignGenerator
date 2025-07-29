@@ -634,6 +634,12 @@ class App {
                 condition: () => this.getBiomesWithMultiplePlanets(enemyPlanets).length > 0
             },
             {
+                type: 'biome_group_themed',
+                name: 'Biome Mastery Campaign',
+                weight: 20,
+                condition: () => apiService.getBiomeGroupsWithMultiplePlanets(enemyPlanets).length > 0
+            },
+            {
                 type: 'liberation_defense',
                 name: 'War Front Campaign',
                 weight: 10,
@@ -802,6 +808,12 @@ class App {
                 const selectedBiome = biomesWithMultiple[Math.floor(Math.random() * biomesWithMultiple.length)];
                 return enemyPlanets.filter(planet => apiService.getPlanetBiome(planet) === selectedBiome);
                 
+            case 'biome_group_themed':
+                // Pick planets from same biome group (Sandy, Moor, Arctic, Primordial, Swamp)
+                const biomeGroupsWithMultiple = apiService.getBiomeGroupsWithMultiplePlanets(enemyPlanets);
+                const selectedBiomeGroup = biomeGroupsWithMultiple[Math.floor(Math.random() * biomeGroupsWithMultiple.length)];
+                return apiService.getPlanetsInBiomeGroup(enemyPlanets, selectedBiomeGroup);
+                
             case 'mission_type_themed':
                 // Will be filtered later in applyThemeToMission based on selectedMissionType
                 return enemyPlanets;
@@ -958,6 +970,12 @@ class App {
                 'Mission: Climate Conquest',
                 'Operation: Biome Domination'
             ],
+            'biome_group_themed': [
+                'Operation: Environmental Mastery',
+                'Campaign: Biome Conquest',
+                'Mission: Terrain Domination',
+                'Operation: Climate Warfare'
+            ],
             'liberation_defense': [
                 'Operation: War Front',
                 'Campaign: Battle Lines',
@@ -978,6 +996,18 @@ class App {
         };
         
         return factionMap[factionName] || factionName;
+    }
+
+    getBiomeGroupName(biomeGroup) {
+        const biomeGroupNames = {
+            'Sandy': 'Sandy',
+            'Moor': 'Moor',
+            'Arctic': 'Arctic',
+            'Primordial': 'Primordial',
+            'Swamp': 'Swamp'
+        };
+        
+        return biomeGroupNames[biomeGroup] || biomeGroup || 'Unknown';
     }
 
     isEntireSectorCampaign(tour) {
@@ -1049,6 +1079,11 @@ class App {
                 `Helldiver. Your tour will test Democracy's adaptability across similar environmental conditions. The Ministry of Science requires data on combat effectiveness in ${apiService.getPlanetBiome(mission.planet).toLowerCase()} environments. Multiple operations in these conditions will prove that Freedom adapts to any climate.`,
                 `Environmental Command has selected you for specialized terrain operations. Your tour will span multiple worlds sharing similar biomes, demonstrating that Democracy thrives in any ecosystem. The ${factionName} will learn that no environment provides sanctuary from Freedom.`,
                 `Your Tour of War focuses on mastering combat in ${apiService.getPlanetBiome(mission.planet).toLowerCase()} conditions. Multiple operations across similar terrain will prove that Managed Democracy conquers not just enemies, but the very planets they hide upon.`
+            ],
+            'biome_group_themed': [
+                `Helldiver. Your tour will demonstrate mastery across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environments. Environmental Command requires proof that Democracy adapts to entire categories of terrain. Multiple operations across similar environmental conditions will show that no biome type can resist Freedom's advance.`,
+                `The Ministry of Science has selected you for specialized biome group operations. Your tour spans multiple worlds within the ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environmental category, proving that Managed Democracy conquers entire classes of terrain. The ${factionName} will learn that environmental similarity offers no protection.`,
+                `Your Tour of War represents complete environmental mastery, Helldiver. Through operations across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} worlds, you will prove that Democracy adapts not just to individual planets, but to entire biome families. No environmental category can hide our enemies from Justice.`
             ],
             'liberation_defense': [
                 `Helldiver. Your tour spans the full spectrum of Democratic warfare - from seizing enemy territory to defending liberated ground. Multiple operations will demonstrate that Freedom both advances and endures. The war front awaits your leadership.`,
@@ -1152,6 +1187,11 @@ class App {
                 `Environmental mastery proceeds successfully across similar terrain conditions. Your tour continues to ${mission.planet.name}, where the same environmental challenges await conquest. Perfect your adaptation to these specific conditions, Helldiver.`,
                 `Excellent terrain adaptation, Helldiver. The next phase of environmental operations brings you to ${mission.planet.name}, where similar biome conditions will further test Democracy's environmental supremacy. No climate can resist Freedom.`,
                 `Your mastery of ${apiService.getPlanetBiome(mission.planet).toLowerCase()} combat continues to impress Environmental Command. ${mission.planet.name} offers similar conditions where you will further demonstrate that Democracy adapts to any world.`
+            ],
+            'biome_group_themed': [
+                `Biome group mastery advances according to plan, Helldiver. Your tour continues to ${mission.planet.name}, another world within the ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environmental category. Each operation proves Democracy's adaptability across entire terrain classifications.`,
+                `Excellent environmental group adaptation. The next phase brings you to ${mission.planet.name}, where similar biome group conditions will further demonstrate your mastery of ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environments. Environmental Command observes your systematic conquest of entire biome families.`,
+                `Your domination of ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} terrain types continues to exceed expectations. ${mission.planet.name} represents another world within this environmental category where you will prove that Democracy conquers not just individual biomes, but entire environmental classifications.`
             ],
             'liberation_defense': [
                 `The cycle of Democratic warfare continues, Helldiver. Your tour now brings you to ${mission.planet.name} for the next phase of balanced operations. Whether seizing ground or holding it, you demonstrate Freedom's complete tactical spectrum.`,

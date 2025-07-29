@@ -133,6 +133,36 @@ class ApiService {
             "Pherkad Secundus": { name: "Swamp", description: "Dense swampland with thick undergrowth" },
             "Alamak VII": { name: "Ethereal", description: "This world teems with ethereal, boundless, and peculiar plant life that spreads silent and uninterrupted across its entire surface" }
         };
+        
+        // Biome Group Mapping - Maps individual biomes to broader biome families for campaign themes
+        this.biomeToGroupMap = {
+            // Sandy group - Desert and rocky environments
+            "Desert Cliffs": "Sandy",
+            "Desert Dunes": "Sandy", 
+            "Rocky Canyons": "Sandy",
+            "Acidic Badlands": "Sandy",
+			"Moon": "Sandy",
+            // Moor group - Moorland and highland environments  
+            "Ionic Crimson": "Moor",
+            "Scorched Moor": "Moor",
+            "Highlands": "Moor",
+            "Tundra": "Moor",
+            // Arctic group - Cold and frozen environments
+            "Icy Glaciers": "Arctic",
+            "Icemoss": "Arctic",
+            
+            // Primordial group - Jungle and ancient forest environments
+            "Ionic Jungle": "Primordial",
+            "Volcanic Jungle": "Primordial", 
+            "Ethereal Jungle": "Primordial",
+            "Ethereal": "Primordial", // For manual overrides like Alamak VII
+            "Deadlands": "Primordial",
+            // Swamp group - Wetland and toxic environments
+            "Swamp": "Swamp",
+            "Dark Swamp": "Swamp", 
+            
+            
+        };
     }
 
     async fetchPlanetsData(forceRefresh = false) {
@@ -729,6 +759,29 @@ class ApiService {
         }
         
         return "Temperate";
+    }
+
+    getBiomeGroup(planet) {
+        const biomeName = this.getPlanetBiome(planet);
+        return this.biomeToGroupMap[biomeName] || null;
+    }
+
+    getPlanetsInBiomeGroup(planets, biomeGroup) {
+        return planets.filter(planet => {
+            const planetBiomeGroup = this.getBiomeGroup(planet);
+            return planetBiomeGroup === biomeGroup;
+        });
+    }
+
+    getBiomeGroupsWithMultiplePlanets(planets) {
+        const biomeGroupCounts = {};
+        planets.forEach(planet => {
+            const biomeGroup = this.getBiomeGroup(planet);
+            if (biomeGroup) {
+                biomeGroupCounts[biomeGroup] = (biomeGroupCounts[biomeGroup] || 0) + 1;
+            }
+        });
+        return Object.keys(biomeGroupCounts).filter(group => biomeGroupCounts[group] >= 2);
     }
 
     getBiomeFromHazard(hazard) {
