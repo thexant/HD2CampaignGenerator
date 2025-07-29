@@ -750,7 +750,15 @@ class App {
                 // Pick planets from same sector
                 const sectorsWithMultiple = this.getSectorsWithMultiplePlanets(enemyPlanets);
                 const selectedSector = sectorsWithMultiple[Math.floor(Math.random() * sectorsWithMultiple.length)];
-                return enemyPlanets.filter(planet => planet.sector === selectedSector);
+                const sectorPlanets = enemyPlanets.filter(planet => planet.sector === selectedSector);
+                
+                // Ensure we actually have multiple planets for this sector theme
+                if (sectorPlanets.length < 2) {
+                    console.warn(`Sector ${selectedSector} only has ${sectorPlanets.length} planet(s), falling back to general planet selection`);
+                    return enemyPlanets;
+                }
+                
+                return sectorPlanets;
                 
             case 'faction_focused':
                 // Pick planets of same faction
@@ -788,7 +796,7 @@ class App {
     applyThemeToMission(planet, campaignTheme, missionIndex, totalMissions) {
         console.log(`Applying theme "${campaignTheme.type}" to mission ${missionIndex + 1} on planet ${planet.name}`);
         
-        // Store original defense status for debugging
+        // Store original defense status from API data
         const originalDefenseStatus = planet.isDefense;
         
         switch (campaignTheme.type) {
@@ -799,8 +807,8 @@ class App {
                     planet.forceNonCity = missionIndex % 2 === 0;
                     console.log(`Single planet theme: Mission ${missionIndex + 1} will be ${planet.forceCityMission ? 'city' : 'planet surface'}`);
                 }
-                // Use original defense status or apply light randomization
-                planet.isDefense = originalDefenseStatus || (Math.random() < 0.3);
+                // Always use the API's accurate defense status
+                planet.isDefense = originalDefenseStatus;
                 break;
                 
             case 'mission_type_themed':
@@ -810,7 +818,7 @@ class App {
                     this.selectedMissionType = missionTypes[Math.floor(Math.random() * missionTypes.length)];
                     console.log(`Mission type theme: Selected "${this.selectedMissionType}" for entire tour`);
                 }
-                // Override the planet's natural defense status
+                // Override the planet's natural defense status for this theme only
                 planet.isDefense = this.selectedMissionType === 'defense';
                 break;
                 
@@ -823,15 +831,10 @@ class App {
             case 'sector_campaign':
             case 'faction_focused': 
             case 'biome_specific':
-                // These themes don't override mission type, use natural status
-                planet.isDefense = originalDefenseStatus || (Math.random() < 0.3);
-                console.log(`${campaignTheme.type} theme: Using natural defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
-                break;
-                
             default:
-                // Default behavior - respect natural status or light randomization
-                planet.isDefense = originalDefenseStatus || (Math.random() < 0.3);
-                console.log(`Default theme behavior: Using natural defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
+                // All other themes respect the API's accurate defense status
+                planet.isDefense = originalDefenseStatus;
+                console.log(`${campaignTheme.type} theme: Using API defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
                 break;
         }
         
