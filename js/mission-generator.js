@@ -553,6 +553,35 @@ class MissionGenerator {
         
         return mission;
     }
+
+    rerollMissionObjectives(existingMission) {
+        // Keep the same planet, faction, and difficulty - only change objectives
+        const faction = existingMission.faction;
+        const difficulty = existingMission.difficulty.level;
+        const environment = existingMission.location ? "city" : "planet";
+        const isDefense = existingMission.isDefense;
+        
+        // Generate new primary objective
+        const newPrimaryObjective = this.selectPrimaryObjective(faction, 0, 1, difficulty, environment, isDefense);
+        
+        // Generate new secondary objectives 
+        const newSecondaryObjectives = this.selectSecondaryObjectives(2 + Math.floor(Math.random() * 2), environment, isDefense, difficulty);
+        
+        // Optionally generate new modifier
+        const newModifier = this.selectModifier();
+        
+        // Create updated mission with new objectives but same core details
+        const updatedMission = {
+            ...existingMission,
+            name: newPrimaryObjective.name || existingMission.name,
+            primaryObjective: newPrimaryObjective,
+            secondaryObjectives: newSecondaryObjectives,
+            modifier: newModifier
+        };
+        
+        console.log(`Re-rolled mission objectives for ${existingMission.planet.name} - New primary: ${newPrimaryObjective.name}`);
+        return updatedMission;
+    }
 }
 
 // Initialize missionGenerator as a global variable to avoid lexical declaration issues

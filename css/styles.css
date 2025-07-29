@@ -843,7 +843,8 @@ footer {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
 }
 
-.death-tracking-dialog::before {
+.death-tracking-dialog::before,
+.mission-reroll-dialog::before {
     content: '';
     position: fixed;
     top: 0;
@@ -852,6 +853,49 @@ footer {
     bottom: 0;
     background: rgba(0, 0, 0, 0.7);
     z-index: -1;
+}
+
+.mission-reroll-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 2px solid #ffd700;
+    border-radius: 10px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.mission-actions {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 1rem;
+}
+
+.reroll-mission-btn {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    color: white;
+    border: none;
+    padding: 0.7rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.reroll-mission-btn:hover {
+    background: linear-gradient(135deg, #d35400, #c0392b);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(211, 84, 0, 0.4);
 }
 
 .dialog-header h3 {

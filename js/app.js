@@ -70,6 +70,8 @@ class App {
 
         // Legacies mode handlers
         this.setupLegaciesModeListeners();
+
+        // Mission reroll handlers use onclick in HTML
     }
 
     setupPreferenceListeners() {
@@ -813,6 +815,10 @@ class App {
                 </div>
                 ` : ''}
                 
+            </div>
+            
+            <div class="mission-actions">
+                <button class="reroll-mission-btn" onclick="app.handleMissionReroll(${index})">Re-roll Mission</button>
             </div>
         `;
 
@@ -2097,6 +2103,45 @@ class App {
         document.getElementById('tour-failure').style.display = 'none';
         document.getElementById('death-tracking-dialog').style.display = 'none';
         document.getElementById('legacies-completion').style.display = 'none';
+        document.getElementById('mission-reroll-dialog').style.display = 'none';
+    }
+
+    handleMissionReroll(missionIndex) {
+        this.pendingRerollIndex = missionIndex;
+        const dialog = document.getElementById('mission-reroll-dialog');
+        dialog.style.display = 'block';
+    }
+
+    handleConfirmReroll() {
+        this.executeMissionReroll(this.pendingRerollIndex);
+        const dialog = document.getElementById('mission-reroll-dialog');
+        dialog.style.display = 'none';
+        this.pendingRerollIndex = null;
+    }
+
+    handleCancelReroll() {
+        const dialog = document.getElementById('mission-reroll-dialog');
+        dialog.style.display = 'none';
+        this.pendingRerollIndex = null;
+    }
+
+    executeMissionReroll(missionIndex) {
+        if (this.tourMode && this.currentTour) {
+            // Re-roll current mission in tour mode
+            const currentMission = this.currentTour.missions[this.currentTour.currentMissionIndex];
+            const rerolledMission = missionGenerator.rerollMissionObjectives(currentMission);
+            
+            // Update the mission in the tour
+            this.currentTour.missions[this.currentTour.currentMissionIndex] = rerolledMission;
+            
+            // Refresh the mission display
+            this.displayCurrentTourMission();
+        } else {
+            // Re-roll specific mission in campaign mode (if implementing later)
+            console.log(`Re-rolling mission ${missionIndex} in campaign mode`);
+            // This would require access to the campaign missions array
+            // For now, focus on tour mode as requested
+        }
     }
 }
 
