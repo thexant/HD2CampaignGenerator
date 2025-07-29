@@ -627,7 +627,7 @@ class App {
         if (campaignTheme.selectedBiome) {
             tourName += ` (${campaignTheme.selectedBiome})`;
         } else if (campaignTheme.selectedBiomeGroup) {
-            tourName += ` (${campaignTheme.selectedBiomeGroup} Group)`;
+            tourName += ` (${this.getBiomeGroupName(campaignTheme.selectedBiomeGroup)} Group)`;
         }
         
         const tour = {
