@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HELLDIVERS 2 Campaign Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>HELLDIVERS 2 Campaign Generator</h1>
+        <p>Generate epic multi-mission campaigns using live galactic war data</p>
+    </header>
+
+    <main>
+        <section class="generator-controls">
+            <div class="preferences-header">
+                <h2>Campaign Preferences</h2>
+                <button id="toggle-preferences" class="toggle-btn" aria-expanded="true">Hide Preferences</button>
+            </div>
+            
+            <div id="preferences-content" class="preferences-content">
+            
+            <!-- Tour of War Mode - Always Enabled (Hidden) -->
+            <div class="preference-group tour-mode-group" style="display: none;">
+                <div class="tour-mode-toggle">
+                    <input type="checkbox" id="tour-mode-checkbox" checked>
+                    <label for="tour-mode-checkbox">
+                        <span class="tour-mode-label">Tour of War Mode</span>
+                        <span class="tour-mode-status" id="tour-mode-status">ON</span>
+                    </label>
+                    <button id="tour-mode-activate" class="tour-activate-btn">Activate Tour</button>
+                </div>
+                <p class="tour-mode-description">Experience guided mission-by-mission progression with democracy officer briefings</p>
+            </div>
+
+            <div class="preference-group" id="campaign-length-group" style="display: none;">
+                <label for="campaign-length">Campaign Length:</label>
+                <select id="campaign-length">
+                    <option value="random">Random (3-7 missions)</option>
+                    <option value="1">Single Mission</option>
+                    <option value="2">Duo (2 missions)</option>
+                    <option value="3">Operation (3 missions)</option>
+                    <option value="4">Extended Operation (4 missions)</option>
+                    <option value="5">Campaign (5 missions)</option>
+                    <option value="6">Major Campaign (6 missions)</option>
+                    <option value="7">Epic Campaign (7 missions)</option>
+                    <option value="8">Extended Campaign (8 missions)</option>
+                    <option value="9">Marathon Campaign (9 missions)</option>
+                    <option value="10">Legendary Campaign (10 missions)</option>
+                    <option value="custom">Custom Length</option>
+                </select>
+            </div>
+
+            <!-- Tour Length Selection -->
+            <div class="preference-group" id="tour-length-group">
+                <label for="tour-length">Tour Length:</label>
+                <select id="tour-length">
+                    <option value="quick">Quick (2-3 missions)</option>
+                    <option value="short">Short (4-5 missions)</option>
+                    <option value="regular" selected>Regular (6-8 missions)</option>
+                    <option value="long">Long (8-10 missions)</option>
+                    <option value="legendary">Legendary (10-12 missions)</option>
+                </select>
+            </div>
+
+            <div class="preference-group" id="custom-length-group" style="display: none;">
+                <label for="custom-length-input">Custom Length (1-50 missions):</label>
+                <input type="number" id="custom-length-input" min="1" max="50" value="5">
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="faction-preference">Enemy Faction:</label>
+                <select id="faction-preference">
+                    <option value="random">Random</option>
+                    <option value="mixed">Mixed Factions</option>
+                    <option value="Terminids">Terminids Only</option>
+                    <option value="Automatons">Automatons Only</option>
+                    <option value="Illuminate">Illuminate Only</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="difficulty-preference">Difficulty Range:</label>
+                <select id="difficulty-preference">
+                    <option value="random">Any Difficulty</option>
+                    <option value="1-3">Trivial to Challenging (1-3)</option>
+                    <option value="4-6">Hard to Extreme (4-6)</option>
+                    <option value="7-10">Suicide to Super Helldive (7-10)</option>
+                    <option value="fixed">Same Difficulty All Missions</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="biome-preference">Planet Biomes:</label>
+                <select id="biome-preference">
+                    <option value="random">Any Biome</option>
+                    <option value="varied">Varied Biomes</option>
+                    <option value="desert">Desert Worlds</option>
+                    <option value="forest">Forest Worlds</option>
+                    <option value="ice">Ice Worlds</option>
+                    <option value="swamp">Swamp Worlds</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="mission-type-preference">Mission Type:</label>
+                <select id="mission-type-preference">
+                    <option value="both">Both Liberation & Defense</option>
+                    <option value="liberation">Liberation Only</option>
+                    <option value="defense">Defense Only</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="target-type-preference">Target Type:</label>
+                <select id="target-type-preference">
+                    <option value="mixed">Planets & Cities</option>
+                    <option value="planets">Planets Only</option>
+                    <option value="cities">Cities Only</option>
+                </select>
+            </div>
+            </div>
+
+            <div class="campaign-actions">
+                <button id="generate-campaign" class="generate-btn" style="display: none;">Generate Campaign</button>
+                <button id="start-tour" class="generate-btn">Start Tour</button>
+                <button id="regenerate-campaign" class="regenerate-btn" style="display: none;">Regenerate Campaign</button>
+                <button id="clear-cache" class="retry-btn" onclick="apiService.clearCache()" style="margin-left: 10px;">Clear Cache & Force Refresh</button>
+            </div>
+        </section>
+
+        <section class="campaign-display" id="campaign-display" style="display: none;">
+            <div class="campaign-header">
+                <h2 id="campaign-name">Operation: [Campaign Name]</h2>
+                <p id="campaign-main-goal">Main Goal: [Campaign objective]</p>
+                <div id="campaign-backstory" class="backstory">
+                    [Campaign backstory will appear here]
+                </div>
+            </div>
+
+            <div class="missions-container" id="missions-container">
+                <!-- Missions will be dynamically generated here -->
+            </div>
+
+            <div class="campaign-footer">
+                <p class="small-text">Campaign generated using live HELLDIVERS 2 galactic war data</p>
+                <p class="small-text">Planet availability subject to change based on current war status</p>
+            </div>
+        </section>
+
+        <!-- Tour of War Display -->
+        <section class="tour-display" id="tour-display" style="display: none;">
+            <!-- Democracy Officer Briefing -->
+            <div class="democracy-briefing" id="democracy-briefing" style="display: none;">
+                <div class="briefing-header">
+                    <h3>🎖️ Democracy Officer Briefing</h3>
+                </div>
+                <div class="briefing-content" id="briefing-content">
+                    [Briefing content will appear here]
+                </div>
+                <div class="briefing-actions">
+                    <button id="acknowledge-briefing" class="generate-btn">Acknowledged, Sir!</button>
+                </div>
+            </div>
+
+            <!-- Current Mission Display -->
+            <div class="current-mission-display" id="current-mission-display">
+                <div class="tour-progress">
+                    <div class="tour-info">
+                        <h2 id="tour-name">Tour of War: [Tour Name]</h2>
+                        <div class="progress-indicator">
+                            Mission <span id="current-mission-number">1</span> of <span id="total-missions">6</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="current-mission-container" id="current-mission-container">
+                    <!-- Current mission will be displayed here -->
+                </div>
+
+                <div class="tour-actions">
+                    <button id="mission-complete" class="progress-btn" style="display: none;">Mission Complete - Progress Tour</button>
+                    <button id="mission-failed" class="fail-btn" style="display: none;">Mission Failed</button>
+                    <button id="abandon-tour" class="retry-btn">Abandon Tour</button>
+                </div>
+            </div>
+
+            <!-- Tour Completion Screen -->
+            <div class="tour-completion" id="tour-completion" style="display: none;">
+                <div class="completion-header">
+                    <h2>🏆 Tour of War Complete!</h2>
+                    <h3 id="completed-tour-name">[Tour Name]</h3>
+                </div>
+                <div class="completion-content">
+                    <p class="completion-message">Your Tour of War is complete, Helldiver. Through multiple campaigns and countless sacrifices, you have proven that Democracy's defenders are truly unstoppable.</p>
+                    <div class="completion-stats" id="completion-stats">
+                        <!-- Tour stats will be displayed here -->
+                    </div>
+                    <div class="completion-message-final">
+                        <p><strong>Your victories across multiple worlds have demonstrated the true power of Managed Democracy. Each battlefield you conquered brought Freedom to those who had forgotten its meaning.</strong></p>
+                        <p><em>"The Ministry of Truth records your achievements for future generations. You have shown that when Democracy calls, her children answer with unwavering resolve."</em></p>
+                    </div>
+                </div>
+                <div class="completion-actions">
+                    <button id="start-new-tour" class="generate-btn">Start New Tour</button>
+                    <button id="return-to-campaigns" class="retry-btn">Return to Campaign Generator</button>
+                </div>
+            </div>
+
+            <!-- Tour Failure Screen -->
+            <div class="tour-failure" id="tour-failure" style="display: none;">
+                <div class="failure-header">
+                    <h2>💀 Tour of War Failed</h2>
+                    <h3 id="failed-tour-name">[Tour Name]</h3>
+                </div>
+                <div class="failure-content">
+                    <p class="failure-message">Your Tour of War has ended in defeat, Helldiver. The forces of tyranny have prevailed this day, but Democracy's cause endures beyond any single campaign.</p>
+                    <div class="failure-stats" id="failure-stats">
+                        <!-- Tour failure stats will be displayed here -->
+                    </div>
+                    <div class="failure-message-final">
+                        <p><strong>This setback does not diminish your service to Super Earth. Every battle teaches us something about the nature of our enemies and the price of Freedom.</strong></p>
+                        <p><em>"Return to training, Helldiver. Study this defeat, learn from it, and when you are ready, Democracy will call upon you again. The war for Liberty is measured not in days, but in generations."</em></p>
+                    </div>
+                </div>
+                <div class="failure-actions">
+                    <button id="retry-tour" class="generate-btn">Retry Tour</button>
+                    <button id="return-to-campaigns-failed" class="retry-btn">Return to Campaign Generator</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="loading" id="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Fetching live galactic war data...</p>
+        </section>
+
+        <section class="error" id="error" style="display: none;">
+            <h3>Error</h3>
+            <p id="error-message">Failed to generate campaign. Please try again.</p>
+            <button id="retry-btn" class="retry-btn">Retry</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>Unofficial HELLDIVERS 2 tool • For Super Earth! • Managed Democracy!</p>
+    </footer>
+
+    <script src="data/mission-types.js"></script>
+    <script src="data/city-mappings.js"></script>
+    <!-- Uncomment when you've filled in real mission data -->
+    <!-- <script src="data/real-mission-types-template.js"></script> -->
+    <script src="js/api-service.js"></script>
+    <script src="js/mission-generator.js"></script>
+    <script src="js/narrative-generator.js"></script>
+    <script src="js/campaign-generator.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

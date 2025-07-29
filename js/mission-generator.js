@@ -1,0 +1,539 @@
+class MissionGenerator {
+    constructor() {
+        this.missionTypes = MISSION_TYPES;
+        this.difficulties = DIFFICULTY_LEVELS;
+        this.factionInfo = FACTION_INFO;
+        this.hazardInfo = PLANET_HAZARDS;
+        this.modifiers = MISSION_TYPES.MODIFIERS;
+        // Check if real mission types are available
+        this.useRealMissions = typeof realMissionTypes !== 'undefined' && realMissionTypes;
+    }
+
+    generateMission(planet, missionIndex, totalMissions, preferences = {}, previousMissions = []) {
+        const faction = apiService.getCurrentEnemy(planet);
+        const hazard = apiService.getPlanetHazard(planet);
+        const biome = apiService.getPlanetBiome(planet);
+        
+        const difficulty = this.selectDifficulty(preferences.difficulty, missionIndex, totalMissions, preferences.isTourMode, previousMissions);
+        
+        // For tour mode, use the theme-enhanced planet properties
+        let finalPlanet = planet;
+        if (preferences.isTourMode && preferences.campaignTheme) {
+            finalPlanet = { ...planet };
+            // The theme-specific properties were already applied in app.js applyThemeToMission
+            // Just ensure we respect them here
+        }
+        
+        // Try to get a city/region for this mission first (respect force settings)
+        let forceCityMission = null;
+        if (finalPlanet.forceNonCity) {
+            forceCityMission = false;
+        } else if (finalPlanet.forceCityMission) {
+            forceCityMission = true;
+        }
+        
+        const selectedRegion = this.selectRegionForMission(finalPlanet, biome, forceCityMission);
+        const environment = selectedRegion ? "city" : "planet";
+        
+        const primaryObjective = this.selectPrimaryObjective(faction, missionIndex, totalMissions, difficulty.level, environment, finalPlanet.isDefense);
+        const secondaryObjectives = this.selectSecondaryObjectives(2 + Math.floor(Math.random() * 2), environment, finalPlanet.isDefense, difficulty.level);
+        
+        // 20% chance to add a modifier
+        const modifier = this.selectModifier();
+        
+        const mission = {
+            number: missionIndex + 1,
+            name: primaryObjective.name || `Mission ${missionIndex + 1}`,
+            planet: {
+                name: finalPlanet.name,
+                sector: finalPlanet.sector || "Unknown Sector",
+                biome: biome,
+                hazard: hazard,
+                hazardDescription: this.hazardInfo[hazard]?.description || "Standard conditions",
+                isDefense: finalPlanet.isDefense || false
+            },
+            faction: faction,
+            difficulty: difficulty,
+            primaryObjective: primaryObjective,
+            secondaryObjectives: secondaryObjectives,
+            modifier: modifier,
+            isDefense: finalPlanet.isDefense || false
+        };
+        
+        // Add region/city information if available and update planet name for consistent formatting
+        if (selectedRegion && selectedRegion.cityName) {
+            mission.location = {
+                type: "city",
+                name: selectedRegion.cityName,
+                regionIndex: selectedRegion.regionIndex,
+                isGenerated: selectedRegion.isGenerated || false
+            };
+            // Update planet name to include city: "City - Planet - System Sector"
+            const sectorName = mission.planet.sector.includes('Sector') ? mission.planet.sector : `${mission.planet.sector} Sector`;
+            mission.planet.displayName = `${selectedRegion.cityName} - ${finalPlanet.name} - ${sectorName}`;
+        } else {
+            // Standard format: "Planet - System Sector"
+            const sectorName = mission.planet.sector.includes('Sector') ? mission.planet.sector : `${mission.planet.sector} Sector`;
+            mission.planet.displayName = `${finalPlanet.name} - ${sectorName}`;
+        }
+        
+        return mission;
+    }
+
+    selectModifier() {
+        // 20% chance to include a modifier
+        if (Math.random() < 0.2) {
+            const randomIndex = Math.floor(Math.random() * this.modifiers.length);
+            return this.modifiers[randomIndex];
+        }
+        return null;
+    }
+
+    selectDifficulty(preference, missionIndex, totalMissions, isTourMode = false, previousMissions = []) {
+        // Tour of War mode always uses its own scaling logic, ignoring preferences
+        if (isTourMode) {
+            return this.calculateTourDifficulty(missionIndex, totalMissions, previousMissions);
+        }
+        
+        if (preference === 'fixed') {
+            const fixedLevel = 3 + Math.floor(Math.random() * 4); // 3-6
+            return this.difficulties.find(d => d.level === fixedLevel);
+        }
+        
+        if (preference === '1-3') {
+            const level = 1 + Math.floor(Math.random() * 3);
+            return this.difficulties.find(d => d.level === level);
+        }
+        
+        if (preference === '4-6') {
+            const level = 4 + Math.floor(Math.random() * 3);
+            return this.difficulties.find(d => d.level === level);
+        }
+        
+        if (preference === '7-10') {
+            const level = 7 + Math.floor(Math.random() * 4);
+            return this.difficulties.find(d => d.level === level);
+        }
+        
+        // Default escalating difficulty for regular campaigns
+        let baseLevel;
+        if (totalMissions <= 3) {
+            baseLevel = 2 + Math.floor(missionIndex * 2);
+        } else {
+            baseLevel = 1 + Math.floor((missionIndex / (totalMissions - 1)) * 6);
+        }
+        
+        // Add some randomness
+        const variation = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+        const finalLevel = Math.max(1, Math.min(10, baseLevel + variation));
+        
+        return this.difficulties.find(d => d.level === finalLevel);
+    }
+
+    calculateTourDifficulty(missionIndex, totalMissions, previousMissions = []) {
+        // Determine tour type based on length
+        let tourType;
+        if (totalMissions <= 4) {
+            tourType = 'short';
+        } else if (totalMissions <= 8) {
+            tourType = 'medium';
+        } else {
+            tourType = 'legendary';
+        }
+        
+        // Calculate progression parameters based on tour type
+        let startDiff, endDiff, progressionPattern;
+        
+        switch (tourType) {
+            case 'short':
+                // Short tours: stable progression, smaller range
+                startDiff = 1 + Math.floor(Math.random() * 3); // 1-3
+                endDiff = Math.min(10, startDiff + 2 + Math.floor(Math.random() * 2)); // +2-3 levels
+                progressionPattern = 'stable';
+                break;
+                
+            case 'medium':
+                // Medium tours: can be stable or jumping, moderate range
+                startDiff = 1 + Math.floor(Math.random() * 4); // 1-4
+                endDiff = Math.min(10, startDiff + 3 + Math.floor(Math.random() * 3)); // +3-5 levels
+                progressionPattern = Math.random() < 0.6 ? 'stable' : 'jumping';
+                break;
+                
+            case 'legendary':
+                // Legendary tours: cover most difficulties, prefer jumping
+                startDiff = 1 + Math.floor(Math.random() * 2); // 1-2
+                endDiff = 9 + Math.floor(Math.random() * 2); // 9-10
+                progressionPattern = Math.random() < 0.7 ? 'jumping' : 'stable';
+                break;
+        }
+        
+        // Calculate difficulty using gameplay-optimized progression curve with NO REGRESSION
+        // Less time in 1-3 (quick/easy), more time in 4-6 and 7-10 (engaging content)
+        
+        // Calculate progress through the tour (0 to 1)
+        const progress = totalMissions > 1 ? missionIndex / (totalMissions - 1) : 0;
+        
+        // Create a smooth upward curve that spends less time in low difficulties
+        // Map progress to difficulty range 1-10 using a curve that accelerates through low difficulties
+        let baseDifficulty;
+        
+        if (progress <= 0.15) {
+            // Very quick ramp through 1-3 (first 15% of tour)
+            const earlyProgress = progress / 0.15;
+            baseDifficulty = 1 + (earlyProgress * 2); // 1 to 3
+        } else if (progress <= 0.55) {
+            // Moderate pace through 4-6 (next 40% of tour)
+            const midProgress = (progress - 0.15) / 0.4;
+            baseDifficulty = 3 + (midProgress * 3); // 3 to 6
+        } else {
+            // Extended time in high difficulties 7-10 (final 45% of tour)
+            const lateProgress = (progress - 0.55) / 0.45;
+            const maxDiff = tourType === 'short' ? 8 : tourType === 'medium' ? 9 : 10;
+            baseDifficulty = 6 + (lateProgress * (maxDiff - 6)); // 6 to maxDiff
+        }
+        
+        // Round to get integer difficulty
+        let finalDifficulty = Math.round(baseDifficulty);
+        
+        // CRITICAL: Never allow regression - each mission must be >= previous mission difficulty
+        let minimumDifficulty = Math.max(
+            1,
+            Math.floor(1 + (missionIndex / totalMissions) * 6) // Ensures steady minimum increase
+        );
+        
+        // If we have previous missions, ensure we never go below the last mission's difficulty
+        if (previousMissions.length > 0) {
+            const lastDifficulty = previousMissions[previousMissions.length - 1].difficulty.level;
+            minimumDifficulty = Math.max(minimumDifficulty, lastDifficulty);
+        }
+        
+        finalDifficulty = Math.max(finalDifficulty, minimumDifficulty);
+        
+        // Small variation only if it doesn't cause regression
+        if (progressionPattern === 'jumping' && Math.random() < 0.3 && missionIndex > 0) {
+            // Only allow upward spikes, never downward
+            if (Math.random() < 0.8) { // 80% chance for +1 spike
+                finalDifficulty = Math.min(10, finalDifficulty + 1);
+            }
+        }
+        
+        // Ensure bounds
+        finalDifficulty = Math.max(1, Math.min(10, finalDifficulty));
+        
+        // Ensure strong finish for longer tours
+        if (missionIndex >= totalMissions - 2) {
+            const minFinalDiff = tourType === 'short' ? 6 : tourType === 'medium' ? 8 : 9;
+            finalDifficulty = Math.max(finalDifficulty, minFinalDiff);
+        }
+        
+        console.log(`Tour: ${tourType} (${totalMissions}), Mission ${missionIndex + 1}, Progress: ${Math.round(progress * 100)}%, Difficulty: ${finalDifficulty}`);
+        
+        return this.difficulties.find(d => d.level === finalDifficulty);
+    }
+
+    selectPrimaryObjective(faction, missionIndex, totalMissions, difficulty, environment, isDefense = false) {
+        // Try to use real mission data if available
+        if (this.useRealMissions && typeof getAvailableMissions === 'function') {
+            const realMissions = getAvailableMissions(faction, environment, difficulty, isDefense);
+            if (realMissions.length > 0) {
+                console.log(`Using real mission data: ${realMissions.length} missions available for ${faction} ${environment} difficulty ${difficulty} ${isDefense ? '(DEFENSE)' : '(LIBERATION)'}`);
+                return realMissions[Math.floor(Math.random() * realMissions.length)];
+            } else {
+                console.log(`No real missions found for ${faction} ${environment} difficulty ${difficulty} ${isDefense ? '(DEFENSE)' : '(LIBERATION)'}, falling back to template missions`);
+            }
+        }
+        
+        // Get available missions using new filtering system
+        const availableObjectives = this.getFilteredMissions(faction, environment, difficulty, isDefense);
+        
+        if (availableObjectives.length === 0) {
+            console.warn(`No missions available for ${faction} on ${environment} difficulty ${difficulty} ${isDefense ? '(DEFENSE)' : '(LIBERATION)'}`);
+            // Fallback to any mission for this faction
+            const fallbackMissions = this.missionTypes.PRIMARY_OBJECTIVES.filter(obj => 
+                obj.faction && obj.faction.includes(faction)
+            );
+            if (fallbackMissions.length > 0) {
+                return fallbackMissions[Math.floor(Math.random() * fallbackMissions.length)];
+            }
+            
+            // Ultimate fallback - return the first available mission
+            console.error(`No fallback missions found for ${faction}, using first available mission`);
+            return this.missionTypes.PRIMARY_OBJECTIVES[0];
+        }
+        
+        return availableObjectives[Math.floor(Math.random() * availableObjectives.length)];
+    }
+
+    /**
+     * Filter missions based on faction, environment, difficulty, and operation type
+     */
+    getFilteredMissions(faction, environment, difficulty, isDefense = false) {
+        const operationType = isDefense ? 'defense' : 'liberation';
+        
+        // All missions are now in the single PRIMARY_OBJECTIVES array
+        const allMissions = this.missionTypes.PRIMARY_OBJECTIVES;
+        
+        return allMissions.filter(mission => {
+            // Check if mission has the new structure
+            if (!mission.faction || !mission.operationType || !mission.environments) {
+                // Handle old structure missions as fallback
+                return this.legacyMissionFilter(mission, faction, environment, difficulty, isDefense);
+            }
+            
+            // Check faction
+            if (!mission.faction.includes(faction)) {
+                return false;
+            }
+            
+            // Check operation type
+            if (!mission.operationType.includes(operationType)) {
+                return false;
+            }
+            
+            // Check environment and difficulty
+            const envConfig = mission.environments[environment];
+            if (!envConfig) {
+                return false;
+            }
+            
+            // Check difficulty range for this environment
+            return difficulty >= envConfig.minDifficulty && difficulty <= envConfig.maxDifficulty;
+        });
+    }
+
+    /**
+     * Legacy filter for old mission structure (backward compatibility)
+     */
+    legacyMissionFilter(mission, faction, environment, difficulty, isDefense) {
+        // Handle old faction format (string or array)
+        const missionFactions = Array.isArray(mission.faction) ? mission.faction : 
+                               typeof mission.faction === 'string' ? mission.faction.split(', ') : [];
+        
+        if (!missionFactions.includes(faction)) {
+            return false;
+        }
+        
+        // Handle old environment format
+        const missionEnvironments = Array.isArray(mission.environment) ? mission.environment : [mission.environment];
+        if (!missionEnvironments.includes(environment)) {
+            return false;
+        }
+        
+        // Handle old difficulty format
+        if (mission.minDifficulty && mission.maxDifficulty) {
+            return difficulty >= mission.minDifficulty && difficulty <= mission.maxDifficulty;
+        }
+        
+        return true;
+    }
+
+    selectRegionForMission(planet, biome, forceCityMission = null) {
+        // Check if planet has available regions
+        const hasRegions = (planet.availableRegions && planet.availableRegions.length > 0) ||
+                          (planet.activeRegions && planet.activeRegions.length > 0) ||
+                          (planet.regions && planet.regions.filter(r => r.isAvailable).length > 0);
+        
+        if (!hasRegions) {
+            return null; // No regions available on this planet
+        }
+        
+        // If forceCityMission is explicitly set, use that. Otherwise, 50/50 chance for city mission
+        let shouldSelectCity;
+        if (forceCityMission !== null) {
+            shouldSelectCity = forceCityMission;
+        } else {
+            shouldSelectCity = Math.random() < 0.5;
+        }
+        
+        if (!shouldSelectCity) {
+            console.log(`Mission will be on planet surface (non-city)`);
+            return null; // Not selecting a city for this mission
+        }
+        
+        // Try to get an available region from the API data first
+        const availableRegion = apiService.getRandomAvailableRegion(planet);
+        
+        if (availableRegion) {
+            // Get city name from our mapping
+            const regionCount = planet.availableRegions ? planet.availableRegions.length : 
+                              planet.activeRegions ? planet.activeRegions.length :
+                              planet.regions ? planet.regions.filter(r => r.isAvailable).length : 1;
+            const cityInfo = cityMappings.getRandomCityForPlanet(planet.name, regionCount, biome);
+            
+            // Find the city that matches this region index, or use a fallback
+            let selectedCity = cityInfo;
+            if (regionCount > 1) {
+                const cities = cityMappings.getCitiesForPlanet(planet.name, regionCount, biome);
+                const matchingCity = cities.find(city => city.index === (availableRegion.regionIndex || availableRegion.index));
+                if (matchingCity) {
+                    selectedCity = matchingCity;
+                }
+            }
+            
+            console.log(`Mission will be in city: ${selectedCity.name}`);
+            return {
+                regionIndex: availableRegion.regionIndex || availableRegion.index,
+                cityName: selectedCity.name,
+                isGenerated: selectedCity.isGenerated || false,
+                regionSize: availableRegion.size || availableRegion.regionSize
+            };
+        }
+        
+        return null; // No city/region for this mission
+    }
+
+    selectSecondaryObjectives(count = 3, environment = "planet", isDefense = false, difficulty = 1) {
+        let available = [];
+        
+        // Try to use real secondary objectives if available
+        if (this.useRealMissions && typeof getAvailableSecondaryObjectives === 'function') {
+            available = getAvailableSecondaryObjectives(environment, isDefense);
+            if (available.length > 0) {
+                console.log(`Using real secondary objectives: ${available.length} available for ${environment} ${isDefense ? '(DEFENSE)' : '(LIBERATION)'}`);
+            }
+        }
+        
+        // Fallback to template secondary objectives
+        if (available.length === 0) {
+            if (isDefense) {
+                // Use defense-specific secondary objectives
+                available = this.missionTypes.DEFENSE_SECONDARY_OBJECTIVES.filter(obj => 
+                    obj.environment.includes(environment) || obj.environment.includes("planet")
+                );
+                
+                // If no defense secondaries match environment, use all defense secondaries
+                if (available.length === 0) {
+                    available = [...this.missionTypes.DEFENSE_SECONDARY_OBJECTIVES];
+                }
+                
+                console.log(`Using DEFENSE secondary objectives: ${available.length} available for ${environment}`);
+            } else {
+                // Use standard secondary objectives
+                if (environment === "city") {
+                    // Try city secondaries first
+                    available = this.missionTypes.CITY_SECONDARY_OBJECTIVES || [];
+                    
+                    // Fallback to general secondaries if no city-specific ones
+                    if (available.length === 0) {
+                        available = [...this.missionTypes.SECONDARY_OBJECTIVES];
+                    }
+                } else {
+                    available = [...this.missionTypes.SECONDARY_OBJECTIVES];
+                }
+                
+                console.log(`Using LIBERATION secondary objectives: ${available.length} available for ${environment}`);
+            }
+        }
+        
+        // Filter objectives based on difficulty
+        available = this.filterSecondaryObjectivesByDifficulty(available, difficulty);
+        
+        const selected = [];
+        const availableCopy = [...available]; // Don't modify original array
+        
+        for (let i = 0; i < Math.min(count, availableCopy.length); i++) {
+            const randomIndex = Math.floor(Math.random() * availableCopy.length);
+            const objective = availableCopy.splice(randomIndex, 1)[0];
+            
+            // Use getDescription function if available, otherwise use default description
+            if (objective.getDescription) {
+                objective.description = objective.getDescription(difficulty);
+            }
+            
+            selected.push(objective);
+        }
+        
+        return selected;
+    }
+
+    filterSecondaryObjectivesByDifficulty(objectives, difficulty) {
+        return objectives.filter(obj => {
+            // Sample collection objectives are difficulty-dependent
+            if (obj.id === 'collect_rare_samples' && difficulty < 4) {
+                return false; // Rare samples only spawn at difficulty 4+
+            }
+            if (obj.id === 'collect_super_samples' && difficulty < 6) {
+                return false; // Super samples only spawn at difficulty 6+
+            }
+            
+            // Some objectives are too demanding for low difficulties
+            if (difficulty < 3) {
+                if (obj.id === 'perfect_accuracy' || obj.id === 'stratagem_conservation') {
+                    return false;
+                }
+            }
+            
+            // Some objectives are more appropriate for higher difficulties
+            if (difficulty >= 7) {
+                if (obj.id === 'stealth_approach') {
+                    return false; // Stealth is nearly impossible at high difficulties
+                }
+            }
+            
+            return true;
+        });
+    }
+
+
+
+    validateMissionSequence(missions) {
+        // Check for faction variety if mixed preference
+        const factions = missions.map(m => m.faction);
+        const uniqueFactions = [...new Set(factions)];
+        
+        // Check for escalating difficulty
+        const difficulties = missions.map(m => m.difficulty.level);
+        
+        // Check for varied objective types
+        const objectiveTypes = missions.map(m => m.primaryObjective ? m.primaryObjective.id : 'unknown');
+        const uniqueTypes = [...new Set(objectiveTypes)];
+        
+        return {
+            isValid: true,
+            factionVariety: uniqueFactions.length / missions.length,
+            difficultyProgression: this.calculateProgression(difficulties),
+            objectiveVariety: uniqueTypes.length / missions.length
+        };
+    }
+
+    calculateProgression(values) {
+        if (values.length < 2) return 1;
+        
+        let increasing = 0;
+        for (let i = 1; i < values.length; i++) {
+            if (values[i] >= values[i-1]) increasing++;
+        }
+        
+        return increasing / (values.length - 1);
+    }
+
+    adjustMissionForBalance(mission, previousMissions, preferences) {
+        // Avoid too many consecutive high-difficulty missions
+        if (previousMissions.length >= 2) {
+            const lastTwo = previousMissions.slice(-2);
+            const avgDifficulty = lastTwo.reduce((sum, m) => sum + m.difficulty.level, 0) / 2;
+            
+            if (avgDifficulty >= 7 && mission.difficulty.level >= 7) {
+                mission.difficulty = this.difficulties.find(d => d.level === Math.max(1, mission.difficulty.level - 2));
+            }
+        }
+        
+        // Ensure faction variety for mixed campaigns
+        if (preferences.faction === 'mixed' && previousMissions.length > 0) {
+            const lastFaction = previousMissions[previousMissions.length - 1].faction;
+            if (mission.faction === lastFaction && previousMissions.length >= 2) {
+                const factions = apiService.getAvailableFactions([]); // Will need planets data
+                const otherFactions = factions.filter(f => f !== lastFaction);
+                if (otherFactions.length > 0) {
+                    // Would need to regenerate with different planet
+                    console.log('Should regenerate mission with different faction');
+                }
+            }
+        }
+        
+        return mission;
+    }
+}
+
+// Initialize missionGenerator as a global variable to avoid lexical declaration issues
+var missionGenerator = new MissionGenerator();
