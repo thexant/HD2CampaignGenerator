@@ -64,6 +64,32 @@
                 </select>
             </div>
 
+            <!-- Tour Theme Selection -->
+            <div class="preference-group" id="tour-theme-group">
+                <label for="tour-theme">Tour Theme:</label>
+                <select id="tour-theme">
+                    <option value="random" selected>Random Theme</option>
+                    <option value="single_planet">Single Planet Conquest</option>
+                    <option value="sector_campaign">Sector Campaign</option>
+                    <option value="faction_focused">Faction Focus</option>
+                    <option value="mission_type_themed">Mission Type Focus</option>
+                    <option value="biome_specific">Environmental Focus</option>
+                    <option value="biome_group_themed">Biome Group Focus</option>
+                    <option value="liberation_defense">War Front Operations</option>
+                </select>
+            </div>
+
+            <!-- Faction Selection (shown only when faction_focused theme is selected) -->
+            <div class="preference-group" id="tour-faction-group" style="display: none;">
+                <label for="tour-faction">Enemy Faction:</label>
+                <select id="tour-faction">
+                    <option value="random">Any Available Faction</option>
+                    <option value="Terminids">Terminids</option>
+                    <option value="Automatons">Automatons</option>
+                    <option value="Illuminate">Illuminate</option>
+                </select>
+            </div>
+
             <div class="preference-group" id="custom-length-group" style="display: none;">
                 <label for="custom-length-input">Custom Length (1-50 missions):</label>
                 <input type="number" id="custom-length-input" min="1" max="50" value="5">

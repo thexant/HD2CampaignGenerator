@@ -236,8 +236,8 @@ class CampaignGenerator {
         
         if (preferences.biome && preferences.biome !== 'random' && preferences.biome !== 'varied') {
             const biomePlanets = candidatePlanets.filter(planet => {
-                const biome = apiService.getPlanetBiome(planet).toLowerCase();
-                return biome.includes(preferences.biome.toLowerCase());
+                const biome = apiService.getPlanetBiome(planet);
+                return biome === preferences.biome;
             });
             if (biomePlanets.length > 0) {
                 candidatePlanets = biomePlanets;
