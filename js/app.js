@@ -695,6 +695,24 @@ class App {
             throw new Error('No enemy planets available for missions');
         }
 
+        // For mission_type_themed, determine the mission type based on available API data
+        if (campaignTheme.type === 'mission_type_themed' && !this.selectedMissionType) {
+            const availableTypes = [];
+            const hasLiberation = enemyPlanets.some(p => !p.isDefense);
+            const hasDefense = enemyPlanets.some(p => p.isDefense);
+            
+            if (hasLiberation) availableTypes.push('liberation');
+            if (hasDefense) availableTypes.push('defense');
+            
+            if (availableTypes.length === 0) {
+                // Fallback if no specific types available
+                this.selectedMissionType = 'liberation';
+            } else {
+                this.selectedMissionType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+            }
+            console.log(`Mission type theme: Selected "${this.selectedMissionType}" based on available API data`);
+        }
+
         // Get themed planet selection based on campaign theme
         const themedPlanets = this.selectThemedPlanets(enemyPlanets, campaignTheme, tourLength);
         console.log(`Theme "${campaignTheme.type}" provided ${themedPlanets.length} planets for ${tourLength} missions`);
@@ -773,7 +791,13 @@ class App {
                 return enemyPlanets.filter(planet => apiService.getPlanetBiome(planet) === selectedBiome);
                 
             case 'mission_type_themed':
+                // Will be filtered later in applyThemeToMission based on selectedMissionType
+                return enemyPlanets;
+                
             case 'liberation_defense':
+                // Use all planets since we respect their natural API defense status
+                return enemyPlanets;
+                
             default:
                 return enemyPlanets;
         }
@@ -788,6 +812,19 @@ class App {
 
         if (campaignTheme.type === 'single_planet') {
             return candidatePlanets[0]; // Always the same planet
+        }
+
+        // For mission_type_themed, filter by the selected mission type using API data
+        if (campaignTheme.type === 'mission_type_themed' && this.selectedMissionType) {
+            const wantDefense = this.selectedMissionType === 'defense';
+            const typedPlanets = candidatePlanets.filter(planet => planet.isDefense === wantDefense);
+            
+            if (typedPlanets.length > 0) {
+                candidatePlanets = typedPlanets;
+                console.log(`Mission type theme: Found ${candidatePlanets.length} planets with ${this.selectedMissionType} status from API`);
+            } else {
+                console.warn(`Mission type theme: No planets found with ${this.selectedMissionType} status from API, using any available planets`);
+            }
         }
 
         return candidatePlanets[Math.floor(Math.random() * candidatePlanets.length)];
@@ -812,20 +849,20 @@ class App {
                 break;
                 
             case 'mission_type_themed':
-                // Focus on one mission type - select once and stick with it for the entire tour
+                // Focus on planets that match the selected mission type from API data
                 if (!this.selectedMissionType) {
-                    const missionTypes = ['liberation', 'defense'];
-                    this.selectedMissionType = missionTypes[Math.floor(Math.random() * missionTypes.length)];
-                    console.log(`Mission type theme: Selected "${this.selectedMissionType}" for entire tour`);
+                    // For mission_type_themed, selection is already done in selectThemedPlanets
+                    // This is a fallback in case it wasn't set properly
+                    this.selectedMissionType = 'liberation';
+                    console.log(`Mission type theme: Fallback to "${this.selectedMissionType}"`);
                 }
-                // Override the planet's natural defense status for this theme only
-                planet.isDefense = this.selectedMissionType === 'defense';
+                // Respect the API's accurate defense status - only use planets that match the theme
+                console.log(`Mission type theme: Using API defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
                 break;
                 
             case 'liberation_defense':
-                // Alternate between liberation and defense, overriding natural status
-                planet.isDefense = missionIndex % 2 === 1;
-                console.log(`Liberation/Defense theme: Mission ${missionIndex + 1} will be ${planet.isDefense ? 'DEFENSE' : 'LIBERATION'}`);
+                // Respect API data - don't override the natural defense status
+                console.log(`Liberation/Defense theme: Using API defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
                 break;
                 
             case 'sector_campaign':
