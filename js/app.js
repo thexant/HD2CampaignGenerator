@@ -61,7 +61,7 @@ class App {
     setupPreferenceListeners() {
         const preferenceIds = [
             'campaign-length', 'faction-preference', 'difficulty-preference', 'biome-preference',
-            'mission-type-preference', 'target-type-preference', 'tour-length', 'tour-theme', 'tour-faction', 'tour-difficulty'
+            'mission-type-preference', 'target-type-preference', 'tour-length', 'tour-theme', 'tour-faction', 'tour-difficulty', 'tour-faction-preference'
         ];
 
         preferenceIds.forEach(id => {
@@ -158,6 +158,7 @@ class App {
         const tourThemeGroup = document.getElementById('tour-theme-group');
         const tourFactionGroup = document.getElementById('tour-faction-group');
         const tourDifficultyGroup = document.getElementById('tour-difficulty-group');
+        const tourFactionPreferenceGroup = document.getElementById('tour-faction-preference-group');
 
         if (this.tourMode) {
             status.textContent = 'ON';
@@ -170,6 +171,7 @@ class App {
             // Show tour-specific elements
             if (tourThemeGroup) tourThemeGroup.style.display = 'block';
             if (tourDifficultyGroup) tourDifficultyGroup.style.display = 'block';
+            if (tourFactionPreferenceGroup) tourFactionPreferenceGroup.style.display = 'block';
             // Faction group visibility is handled by handleTourThemeChange
 
             // Hide other preference groups
@@ -188,6 +190,7 @@ class App {
             if (tourThemeGroup) tourThemeGroup.style.display = 'none';
             if (tourFactionGroup) tourFactionGroup.style.display = 'none';
             if (tourDifficultyGroup) tourDifficultyGroup.style.display = 'none';
+            if (tourFactionPreferenceGroup) tourFactionPreferenceGroup.style.display = 'none';
 
             // Show other preference groups
             preferencesToHide.forEach(group => {
@@ -649,19 +652,27 @@ class App {
         const enemyPlanets = apiService.getEnemyPlanets(planets);
         const availableFactions = apiService.getAvailableFactions(enemyPlanets);
         
+        // Filter planets by faction preference if specified
+        let filteredPlanets = enemyPlanets;
+        if (preferences.tourFactionPreference && preferences.tourFactionPreference !== 'any') {
+            filteredPlanets = enemyPlanets.filter(planet => 
+                apiService.getCurrentEnemy(planet) === preferences.tourFactionPreference
+            );
+        }
+        
         // Define campaign themes with their availability conditions
         const themes = [
             {
                 type: 'single_planet',
                 name: 'Planetary Conquest',
                 weight: 20,
-                condition: () => enemyPlanets.length >= 1
+                condition: () => filteredPlanets.length >= 1
             },
             {
                 type: 'sector_campaign', 
                 name: 'Sector Liberation',
                 weight: 15,
-                condition: () => this.getSectorsWithMultiplePlanets(enemyPlanets).length > 0
+                condition: () => this.getSectorsWithMultiplePlanets(filteredPlanets).length > 0
             },
             {
                 type: 'faction_focused',
@@ -672,32 +683,33 @@ class App {
                         // Check if the specific faction is available
                         return availableFactions.includes(preferences.tourFaction);
                     }
-                    return availableFactions.length >= 1;
+                    // For faction focused themes, we need at least one planet
+                    return filteredPlanets.length >= 1;
                 }
             },
             {
                 type: 'mission_type_themed',
                 name: 'Strategic Operations',
                 weight: 15,
-                condition: () => enemyPlanets.length >= 3
+                condition: () => filteredPlanets.length >= 3
             },
             {
                 type: 'biome_specific',
                 name: 'Environmental Campaign',
                 weight: 15,
-                condition: () => this.getBiomesWithMultiplePlanets(enemyPlanets).length > 0
+                condition: () => this.getBiomesWithMultiplePlanets(filteredPlanets).length > 0
             },
             {
                 type: 'biome_group_themed',
                 name: 'Biome Mastery Campaign',
                 weight: 20,
-                condition: () => apiService.getBiomeGroupsWithMultiplePlanets(enemyPlanets).length > 0
+                condition: () => apiService.getBiomeGroupsWithMultiplePlanets(filteredPlanets).length > 0
             },
             {
                 type: 'liberation_defense',
                 name: 'War Front Campaign',
                 weight: 10,
-                condition: () => enemyPlanets.length >= 4
+                condition: () => filteredPlanets.length >= 4
             }
         ];
 
@@ -710,6 +722,11 @@ class App {
                 // For faction_focused theme, store the user's faction preference
                 if (preferences.tourTheme === 'faction_focused' && preferences.tourFaction !== 'random') {
                     selectedTheme.selectedFaction = preferences.tourFaction;
+                }
+                
+                // If user has a faction preference and theme is faction-focused, use that preference
+                if (selectedTheme.type === 'faction_focused' && preferences.tourFactionPreference && preferences.tourFactionPreference !== 'any') {
+                    selectedTheme.selectedFaction = preferences.tourFactionPreference;
                 }
                 
                 return selectedTheme;
@@ -736,7 +753,18 @@ class App {
         }
 
         // Random theme selection (original logic)
-        const availableThemes = themes.filter(theme => theme.condition());
+        let availableThemes = themes.filter(theme => theme.condition());
+        
+        // If user selected a specific faction preference, boost weights for single-faction themes
+        if (preferences.tourFactionPreference && preferences.tourFactionPreference !== 'any') {
+            availableThemes = availableThemes.map(theme => {
+                // These themes work well with single faction preference
+                if (['single_planet', 'sector_campaign', 'faction_focused', 'biome_specific', 'biome_group_themed'].includes(theme.type)) {
+                    return { ...theme, weight: theme.weight * 1.5 };
+                }
+                return theme;
+            });
+        }
         
         if (availableThemes.length === 0) {
             // Fallback to single planet theme
@@ -754,11 +782,25 @@ class App {
         for (const theme of availableThemes) {
             random -= theme.weight;
             if (random <= 0) {
-                return theme;
+                const selectedTheme = { ...theme };
+                
+                // If faction_focused theme is selected and user has faction preference, use it
+                if (selectedTheme.type === 'faction_focused' && preferences.tourFactionPreference && preferences.tourFactionPreference !== 'any') {
+                    selectedTheme.selectedFaction = preferences.tourFactionPreference;
+                }
+                
+                return selectedTheme;
             }
         }
         
-        return availableThemes[0]; // Fallback
+        const fallbackTheme = { ...availableThemes[0] };
+        
+        // Apply faction preference to fallback theme if applicable
+        if (fallbackTheme.type === 'faction_focused' && preferences.tourFactionPreference && preferences.tourFactionPreference !== 'any') {
+            fallbackTheme.selectedFaction = preferences.tourFactionPreference;
+        }
+        
+        return fallbackTheme;
     }
 
     getSectorsWithMultiplePlanets(planets) {
@@ -801,11 +843,23 @@ class App {
             throw new Error('No enemy planets available for missions');
         }
 
+        // Filter planets by faction preference if specified
+        let availablePlanets = enemyPlanets;
+        if (preferences.tourFactionPreference && preferences.tourFactionPreference !== 'any') {
+            availablePlanets = enemyPlanets.filter(planet => 
+                apiService.getCurrentEnemy(planet) === preferences.tourFactionPreference
+            );
+            
+            if (availablePlanets.length === 0) {
+                throw new Error(`No planets available for ${preferences.tourFactionPreference} faction`);
+            }
+        }
+
         // For mission_type_themed, determine the mission type based on available API data
         if (campaignTheme.type === 'mission_type_themed' && !this.selectedMissionType) {
             const availableTypes = [];
-            const hasLiberation = enemyPlanets.some(p => !p.isDefense);
-            const hasDefense = enemyPlanets.some(p => p.isDefense);
+            const hasLiberation = availablePlanets.some(p => !p.isDefense);
+            const hasDefense = availablePlanets.some(p => p.isDefense);
             
             if (hasLiberation) availableTypes.push('liberation');
             if (hasDefense) availableTypes.push('defense');
@@ -820,7 +874,7 @@ class App {
         }
 
         // Get themed planet selection based on campaign theme
-        const themedPlanets = this.selectThemedPlanets(enemyPlanets, campaignTheme, tourLength);
+        const themedPlanets = this.selectThemedPlanets(availablePlanets, campaignTheme, tourLength);
         console.log(`Theme "${campaignTheme.type}" provided ${themedPlanets.length} planets for ${tourLength} missions`);
         
         for (let i = 0; i < tourLength; i++) {
@@ -891,7 +945,7 @@ class App {
                     // Use user's faction preference
                     selectedFaction = campaignTheme.selectedFaction;
                 } else {
-                    // Random faction selection (original behavior)
+                    // Random faction selection from available planets (respecting faction preference)
                     const availableFactions = apiService.getAvailableFactions(enemyPlanets);
                     selectedFaction = availableFactions[Math.floor(Math.random() * availableFactions.length)];
                 }
@@ -1143,7 +1197,8 @@ class App {
             tourLength: document.getElementById('tour-length')?.value || 'regular',
             tourTheme: document.getElementById('tour-theme')?.value || 'random',
             tourFaction: document.getElementById('tour-faction')?.value || 'random',
-            tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all'
+            tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all',
+            tourFactionPreference: document.getElementById('tour-faction-preference')?.value || 'any'
         };
     }
 
@@ -1398,6 +1453,7 @@ class App {
         const tourThemeGroup = document.getElementById('tour-theme-group');
         const tourFactionGroup = document.getElementById('tour-faction-group');
         const tourDifficultyGroup = document.getElementById('tour-difficulty-group');
+        const tourFactionPreferenceGroup = document.getElementById('tour-faction-preference-group');
         const generateBtn = document.getElementById('generate-campaign');
         const startTourBtn = document.getElementById('start-tour');
         
@@ -1405,6 +1461,7 @@ class App {
         if (tourLengthGroup) tourLengthGroup.style.display = 'block';
         if (tourThemeGroup) tourThemeGroup.style.display = 'block';
         if (tourDifficultyGroup) tourDifficultyGroup.style.display = 'block';
+        if (tourFactionPreferenceGroup) tourFactionPreferenceGroup.style.display = 'block';
         // Faction group visibility is handled by current theme selection
         if (tourFactionGroup) {
             const tourThemeSelect = document.getElementById('tour-theme');
