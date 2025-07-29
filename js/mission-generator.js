@@ -141,40 +141,18 @@ class MissionGenerator {
             tourType = 'legendary';
         }
         
-        // Calculate progression parameters based on tour type
-        let startDiff, endDiff, progressionPattern;
-        
-        switch (tourType) {
-            case 'short':
-                // Short tours: stable progression, smaller range
-                startDiff = 1 + Math.floor(Math.random() * 3); // 1-3
-                endDiff = Math.min(10, startDiff + 2 + Math.floor(Math.random() * 2)); // +2-3 levels
-                progressionPattern = 'stable';
-                break;
-                
-            case 'medium':
-                // Medium tours: can be stable or jumping, moderate range
-                startDiff = 1 + Math.floor(Math.random() * 4); // 1-4
-                endDiff = Math.min(10, startDiff + 3 + Math.floor(Math.random() * 3)); // +3-5 levels
-                progressionPattern = Math.random() < 0.6 ? 'stable' : 'jumping';
-                break;
-                
-            case 'legendary':
-                // Legendary tours: cover most difficulties, prefer jumping
-                startDiff = 1 + Math.floor(Math.random() * 2); // 1-2
-                endDiff = 9 + Math.floor(Math.random() * 2); // 9-10
-                progressionPattern = Math.random() < 0.7 ? 'jumping' : 'stable';
-                break;
-        }
-        
-        // Calculate difficulty using gameplay-optimized progression curve with NO REGRESSION
-        // Less time in 1-3 (quick/easy), more time in 4-6 and 7-10 (engaging content)
-        
         // Calculate progress through the tour (0 to 1)
         const progress = totalMissions > 1 ? missionIndex / (totalMissions - 1) : 0;
         
-        // Create a smooth upward curve that spends less time in low difficulties
-        // Map progress to difficulty range 1-10 using a curve that accelerates through low difficulties
+        // STRICT NO-REGRESSION ENFORCEMENT: Always maintain or increase difficulty
+        // Get the absolute minimum difficulty based on previous missions
+        let absoluteMinimum = 1;
+        if (previousMissions.length > 0) {
+            absoluteMinimum = previousMissions[previousMissions.length - 1].difficulty.level;
+        }
+        
+        // Calculate base difficulty using progression curve
+        // Less time in 1-3 (quick/easy), more time in 4-6 and 7-10 (engaging content)
         let baseDifficulty;
         
         if (progress <= 0.15) {
@@ -193,32 +171,36 @@ class MissionGenerator {
         }
         
         // Round to get integer difficulty
-        let finalDifficulty = Math.round(baseDifficulty);
+        let targetDifficulty = Math.round(baseDifficulty);
         
-        // CRITICAL: Never allow regression - each mission must be >= previous mission difficulty
-        let minimumDifficulty = Math.max(
+        // Guaranteed minimum progression baseline (independent of curve)
+        const progressionMinimum = Math.max(
             1,
-            Math.floor(1 + (missionIndex / totalMissions) * 6) // Ensures steady minimum increase
+            Math.floor(1 + (missionIndex / totalMissions) * 7) // Ensures consistent upward trajectory
         );
         
-        // If we have previous missions, ensure we never go below the last mission's difficulty
-        if (previousMissions.length > 0) {
-            const lastDifficulty = previousMissions[previousMissions.length - 1].difficulty.level;
-            minimumDifficulty = Math.max(minimumDifficulty, lastDifficulty);
-        }
+        // Final difficulty must be at least the absolute minimum (previous mission) 
+        // AND meet the progression baseline
+        let finalDifficulty = Math.max(
+            absoluteMinimum,           // Never go below previous mission
+            progressionMinimum,       // Maintain steady progression
+            targetDifficulty          // Achieve curve target if possible
+        );
         
-        finalDifficulty = Math.max(finalDifficulty, minimumDifficulty);
+        // Tour-specific difficulty spikes (only upward)
+        const progressionPattern = tourType === 'legendary' ? 'jumping' : 
+                                  (tourType === 'medium' && Math.random() < 0.4) ? 'jumping' : 'stable';
         
-        // Small variation only if it doesn't cause regression
-        if (progressionPattern === 'jumping' && Math.random() < 0.3 && missionIndex > 0) {
-            // Only allow upward spikes, never downward
-            if (Math.random() < 0.8) { // 80% chance for +1 spike
+        if (progressionPattern === 'jumping' && Math.random() < 0.25 && missionIndex > 0) {
+            // Only allow upward spikes that don't violate progression
+            const spikeChance = Math.random();
+            if (spikeChance < 0.7) { // 70% chance for +1 spike
                 finalDifficulty = Math.min(10, finalDifficulty + 1);
+            } else if (spikeChance < 0.9) { // 20% chance for +2 spike
+                finalDifficulty = Math.min(10, finalDifficulty + 2);
             }
+            // 10% chance for no spike
         }
-        
-        // Ensure bounds
-        finalDifficulty = Math.max(1, Math.min(10, finalDifficulty));
         
         // Ensure strong finish for longer tours
         if (missionIndex >= totalMissions - 2) {
@@ -226,7 +208,19 @@ class MissionGenerator {
             finalDifficulty = Math.max(finalDifficulty, minFinalDiff);
         }
         
-        console.log(`Tour: ${tourType} (${totalMissions}), Mission ${missionIndex + 1}, Progress: ${Math.round(progress * 100)}%, Difficulty: ${finalDifficulty}`);
+        // Absolute bounds check
+        finalDifficulty = Math.max(1, Math.min(10, finalDifficulty));
+        
+        // VALIDATION: Ensure no regression occurred
+        if (previousMissions.length > 0) {
+            const lastDifficulty = previousMissions[previousMissions.length - 1].difficulty.level;
+            if (finalDifficulty < lastDifficulty) {
+                console.error(`REGRESSION DETECTED! Mission ${missionIndex + 1} difficulty ${finalDifficulty} < previous ${lastDifficulty}. Correcting...`);
+                finalDifficulty = lastDifficulty;
+            }
+        }
+        
+        console.log(`Tour: ${tourType} (${totalMissions}), Mission ${missionIndex + 1}, Progress: ${Math.round(progress * 100)}%, Difficulty: ${finalDifficulty}${previousMissions.length > 0 ? ` (prev: ${previousMissions[previousMissions.length - 1].difficulty.level})` : ''}`);
         
         return this.difficulties.find(d => d.level === finalDifficulty);
     }
@@ -488,12 +482,33 @@ class MissionGenerator {
         const objectiveTypes = missions.map(m => m.primaryObjective ? m.primaryObjective.id : 'unknown');
         const uniqueTypes = [...new Set(objectiveTypes)];
         
+        // CRITICAL: Validate no difficulty regression occurred
+        const difficultyRegressions = this.validateNoDifficultyRegression(difficulties);
+        
         return {
-            isValid: true,
+            isValid: difficultyRegressions.length === 0,
             factionVariety: uniqueFactions.length / missions.length,
             difficultyProgression: this.calculateProgression(difficulties),
-            objectiveVariety: uniqueTypes.length / missions.length
+            objectiveVariety: uniqueTypes.length / missions.length,
+            difficultyRegressions: difficultyRegressions
         };
+    }
+
+    validateNoDifficultyRegression(difficulties) {
+        const regressions = [];
+        
+        for (let i = 1; i < difficulties.length; i++) {
+            if (difficulties[i] < difficulties[i-1]) {
+                regressions.push({
+                    missionIndex: i,
+                    currentDifficulty: difficulties[i],
+                    previousDifficulty: difficulties[i-1],
+                    message: `Mission ${i + 1} difficulty ${difficulties[i]} is lower than Mission ${i} difficulty ${difficulties[i-1]}`
+                });
+            }
+        }
+        
+        return regressions;
     }
 
     calculateProgression(values) {
