@@ -1067,7 +1067,7 @@ class App {
             ],
             'faction_focused': [
                 `Helldiver. Your tour represents a concentrated strike against the ${factionName} across multiple battlefields. The Ministry of Defense has determined that focused pressure on this specific threat will yield maximum strategic advantage. Show them that Democracy singles out its enemies for special attention.`,
-                `The ${factionName} have earned particular scrutiny from Super Earth Command. Your Tour of War will pursue them across multiple worlds, demonstrating that Managed Democracy never forgets its enemies. Begin this campaign of focused elimination on ${mission.planet.name}.`,
+                `The ${factionName} threat has come under particular scrutiny from Super Earth Command. Your Tour of War will pursue them across multiple worlds, demonstrating that Managed Democracy never forgets its enemies. Begin this campaign of focused elimination on ${mission.planet.name}.`,
                 `Your tour specifically targets ${factionName} forces wherever they may be found. Multiple operations against this singular threat will prove that Democracy's wrath, once focused, becomes an unstoppable force. The hunt begins on ${mission.planet.name}.`
             ],
             'mission_type_themed': [
