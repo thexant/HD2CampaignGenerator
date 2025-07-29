@@ -37,7 +37,7 @@ const MISSION_TYPES = {
 			id: "spread_democracy",
 			name: "Spread Democracy",
 			description: "We must show the galaxy that even in the face of oppression, Freedom remains defiant. Infiltrate behind enemy lines and raise our Flag as an unassailable beacon of Liberty.",
-			faction: ["Terminids"],
+			faction: ["Terminids", "Automatons"],
 			operationType: ["liberation", "defense"],
 			environments: {
 				planet: { minDifficulty: 1, maxDifficulty: 10 }
