@@ -1717,10 +1717,11 @@ class App {
             'Moor': 'Moor',
             'Arctic': 'Arctic',
             'Primordial': 'Primordial',
-            'Swamp': 'Swamp'
+            'Swamp': 'Swamp',
+            'Unknown': 'Mixed'
         };
         
-        return biomeGroupNames[biomeGroup] || biomeGroup || 'Unknown';
+        return biomeGroupNames[biomeGroup] || biomeGroup || 'Mixed';
     }
 
     isEntireSectorCampaign(tour) {
@@ -1774,19 +1775,19 @@ class App {
         
         const themeBriefings = {
             'single_planet': [
-                `Helldiver. Your tour focuses entirely on ${mission.planet.name}. This world has become a festering wound in Democracy's flesh, and you will be the surgical blade that excises the ${factionName} infection. Multiple operations across both planetary surface and urban centers will demonstrate the thoroughness of Managed Democracy.`,
-                `The Ministry of Defense has identified ${mission.planet.name} as a critical strategic target. Your Tour of War will systematically dismantle every ${factionName} stronghold on this world, from wilderness outposts to metropolitan centers. Leave no stone unturned, Helldiver.`,
-                `${mission.planet.name} requires total liberation, Helldiver. Your tour will span the entire world - surface installations, urban sectors, and everything between. The ${factionName} presence will be completely eradicated through sustained, methodical operations.`
+                `Helldiver. Your tour focuses entirely on ${mission.planet.name}. This world has become a festering wound in Democracy's flesh, and you will be the surgical blade that excises the ${factionName} infection. Multiple operations across both planetary surface and urban centers will demonstrate the thoroughness of Managed Democracy and weaken the invaders grip on this world.`,
+                `The Ministry of Defense has identified ${mission.planet.name} as a critical strategic target. Your Tour of War will systematically dismantle every ${factionName} stronghold on this world, from wilderness outposts to any metropolitan centers. Your success will allow SEAF to establish a foothold here.`,
+                `${mission.planet.name} requires liberation, Helldiver. Your tour will span the entire world - surface installations, urban sectors, and everything between. The ${factionName} presence will fear your sustained, methodical operations. Success will ensure essential wartime infrastructure can be deployed to the planet to aid in its capture.`
             ],
             'sector_campaign': [
                 `Helldiver. ${this.isEntireSectorCampaign(tour) ? 'The entire' : 'The'} ${mission.planet.sector.includes('Sector') ? mission.planet.sector : mission.planet.sector + ' Sector'} has fallen to ${factionName} influence. Your Tour of War will sweep across multiple worlds in this sector, establishing Democratic control through decisive military action. This is regional warfare at its most crucial.`,
-                `The Ministry of Truth reports widespread ${factionName} contamination throughout the ${mission.planet.sector.includes('Sector') ? mission.planet.sector : mission.planet.sector + ' Sector'}. Your tour will liberate world after world, demonstrating that no corner of space can hide from Democracy's reach. Begin with ${mission.planet.name}.`,
-                `Strategic Command designates the ${mission.planet.sector.includes('Sector') ? mission.planet.sector : mission.planet.sector + ' Sector'} as Priority Alpha for liberation. Your Tour of War represents a ${this.isEntireSectorCampaign(tour) ? 'sector-wide' : 'regional'} cleansing operation. Multiple planets await your attention, starting with the ${factionName} stronghold on ${mission.planet.name}.`
+                `The Ministry of Truth reports widespread ${factionName} contamination throughout the ${mission.planet.sector.includes('Sector') ? mission.planet.sector : mission.planet.sector + ' Sector'}. Your tour will strike world after world, demonstrating that no corner of the galaxy can hide from Democracy's reach. You will begin with ${mission.planet.name}. Drive the invaders out of this sector.`,
+                `Super Earth High Command designates the ${mission.planet.sector.includes('Sector') ? mission.planet.sector : mission.planet.sector + ' Sector'} as a High Priority for liberation. Your Tour of War represents a ${this.isEntireSectorCampaign(tour) ? 'sector-wide' : 'regional'} cleansing operation. Multiple planets await your attention, starting with the ${factionName} stronghold on ${mission.planet.name}. Your successes will weaken the enemy grip on this sector.`
             ],
             'faction_focused': [
-                `Helldiver. Your tour represents a concentrated strike against the ${factionName} across multiple battlefields. The Ministry of Defense has determined that focused pressure on this specific threat will yield maximum strategic advantage. Show them that Democracy singles out its enemies for special attention.`,
-                `The ${factionName} threat has come under particular scrutiny from Super Earth Command. Your Tour of War will pursue them across multiple worlds, demonstrating that Managed Democracy never forgets its enemies. Begin this campaign of focused elimination on ${mission.planet.name}.`,
-                `Your tour specifically targets ${factionName} forces wherever they may be found. Multiple operations against this singular threat will prove that Democracy's wrath, once focused, becomes an unstoppable force. The hunt begins on ${mission.planet.name}.`
+                `Helldiver. Your tour represents a concentrated strike against the ${factionName} across multiple battlefields. The Ministry of Defense has determined that focused pressure on this specific threat will yield maximum strategic advantage. Show them the full might of Democracy.`,
+                `A series of strikes against the ${factionName} threat has been ordered by Super Earth High Command. Your Tour of War will pursue them across multiple worlds, demonstrating that Managed Democracy relentlessly pursues her enemies. You will begin this campaign of focused elimination on the world of ${mission.planet.name}.`,
+                `Your tour targets ${factionName} forces wherever they may be found. Multiple operations against this singular threat will prove that Democracy's wrath, when focused, becomes an unstoppable force. Your hunt begins on ${mission.planet.name}, show no mercy to the invaders.`
             ],
             'mission_type_themed': [
                 `Helldiver. Your tour emphasizes tactical excellence through specialized operations. The Ministry of Defense requires demonstration of specific combat doctrines across multiple battlefields. Your success will validate Strategic Command's operational theories.`,
@@ -1794,18 +1795,18 @@ class App {
                 `Your Tour of War represents focused tactical development, Helldiver. Through repeated application of specific operational methods across multiple battlefields, you will perfect the art of Democratic warfare. The first lesson begins on ${mission.planet.name}.`
             ],
             'biome_specific': [
-                `Helldiver. Your tour will test Democracy's adaptability across similar environmental conditions. The Ministry of Science requires data on combat effectiveness in ${apiService.getPlanetBiome(mission.planet).toLowerCase()} environments. Multiple operations in these conditions will prove that Freedom adapts to any climate.`,
-                `Environmental Command has selected you for specialized terrain operations. Your tour will span multiple worlds sharing similar biomes, demonstrating that Democracy thrives in any ecosystem. The ${factionName} will learn that no environment provides sanctuary from Freedom.`,
+                `Helldiver. Your tour will test Democracy's adaptability across similar environmental conditions. The Ministry of Science requires data on combat effectiveness in ${apiService.getPlanetBiome(mission.planet).toLowerCase()} environments. Multiple operations in these conditions will prove that the Will of Freedom adapts to any climate.`,
+                `Super Earth High Command has selected you for specialized terrain operations. Your tour will span multiple worlds sharing similar biomes, demonstrating that Democracy thrives in any ecosystem. The ${factionName} will learn that no environment provides sanctuary from Freedom.`,
                 `Your Tour of War focuses on mastering combat in ${apiService.getPlanetBiome(mission.planet).toLowerCase()} conditions. Multiple operations across similar terrain will prove that Managed Democracy conquers not just enemies, but the very planets they hide upon.`
             ],
             'biome_group_themed': [
-                `Helldiver. Your tour will demonstrate mastery across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environments. Environmental Command requires proof that Democracy adapts to entire categories of terrain. Multiple operations across similar environmental conditions will show that no biome type can resist Freedom's advance.`,
-                `The Ministry of Science has selected you for specialized biome group operations. Your tour spans multiple worlds within the ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environmental category, proving that Managed Democracy conquers entire classes of terrain. The ${factionName} will learn that environmental similarity offers no protection.`,
+                `Helldiver. Your tour will demonstrate mastery across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environments. You will be the proof that Democracy adapts to any region. Multiple operations through similar conditions will show that no environment can resist Freedom's advance.`,
+                `The Ministry of Science has selected you for specialized biome group operations. Your tour spans multiple worlds within the ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environmental category, proving that Managed Democracy conquers entire classes of terrain. The ${factionName} will learn that no environmental offers protection from Democracy's Judgement.`,
                 `Your Tour of War represents complete environmental mastery, Helldiver. Through operations across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} worlds, you will prove that Democracy adapts not just to individual planets, but to entire biome families. No environmental category can hide our enemies from Justice.`
             ],
             'liberation_defense': [
-                `Helldiver. Your tour spans the full spectrum of Democratic warfare - from seizing enemy territory to defending liberated ground. Multiple operations will demonstrate that Freedom both advances and endures. The war front awaits your leadership.`,
-                `Strategic Command requires proof of tactical versatility. Your Tour of War alternates between offensive liberation and defensive operations, showing that Democracy both conquers and protects. Begin this demonstration of military balance on ${mission.planet.name}.`,
+                `Helldiver. Your tour spans the full spectrum of Democratic warfare - from seizing enemy territory to defending liberated ground. Multiple operations will demonstrate that Freedom both advances and endures.`,
+                `Super Earth High Command requires proof of tactical versatility. Your Tour of War alternates between offensive liberation and defensive operations, showing that Democracy both conquers and protects. Begin this demonstration of military balance on ${mission.planet.name}.`,
                 `Your tour represents the complete cycle of Democratic warfare. Through alternating liberation and defense operations, you will prove that Freedom both expands and consolidates its gains. The balance of war begins on ${mission.planet.name}.`
             ]
         };

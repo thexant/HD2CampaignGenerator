@@ -156,12 +156,14 @@ class ApiService {
             "Volcanic Jungle": "Primordial", 
             "Ethereal Jungle": "Primordial",
             "Ethereal": "Primordial", // For manual overrides like Alamak VII
-            "Deadlands": "Primordial",
+            
             // Swamp group - Wetland and toxic environments
             "Swamp": "Swamp",
-            "Dark Swamp": "Swamp", 
+            "Dark Swamp": "Swamp",
+            "Deadlands": "Swamp",
             
-            
+            // Fallback for unknown biomes
+            "Unknown": "Unknown"
         };
     }
 
