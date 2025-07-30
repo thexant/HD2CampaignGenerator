@@ -123,7 +123,7 @@ class CityMappings {
                 { index: 0, name: "Parrhesia" },
                 { index: 1, name: "Isegoria" }
             ],
-            "vog_sojoth": [
+            "vogsojoth": [
                 { index: 0, name: "Haerstvik" }
             ],
             "alairt_iii": [
