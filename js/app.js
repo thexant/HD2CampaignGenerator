@@ -87,10 +87,22 @@ class App {
             }
         });
 
-        // Custom length input
+        // Custom length input  
         const customInput = document.getElementById('custom-length-input');
         if (customInput) {
             customInput.addEventListener('input', () => this.savePreferences());
+        }
+
+        // Custom tour length input
+        const customTourInput = document.getElementById('custom-tour-length-input');
+        if (customTourInput) {
+            customTourInput.addEventListener('input', () => this.savePreferences());
+        }
+
+        // Tour length dropdown special handling
+        const tourLengthSelect = document.getElementById('tour-length');
+        if (tourLengthSelect) {
+            tourLengthSelect.addEventListener('change', (e) => this.handleTourLengthChange(e));
         }
 
         // Squad member name inputs
@@ -298,6 +310,18 @@ class App {
                 customLengthGroup.style.display = 'block';
             } else {
                 customLengthGroup.style.display = 'none';
+            }
+        }
+        this.savePreferences();
+    }
+
+    handleTourLengthChange(event) {
+        const customTourLengthGroup = document.getElementById('custom-tour-length-group');
+        if (customTourLengthGroup) {
+            if (event.target.value === 'custom') {
+                customTourLengthGroup.style.display = 'block';
+            } else {
+                customTourLengthGroup.style.display = 'none';
             }
         }
         this.savePreferences();
@@ -710,7 +734,16 @@ class App {
             squadMembers: squadMembers,
             livesMode: document.getElementById('lives-mode')?.value || 'default',
             customLivesCount: parseInt(document.getElementById('custom-lives-count')?.value) || 2,
-            customMissionCycle: parseInt(document.getElementById('custom-mission-cycle')?.value) || 3
+            customMissionCycle: parseInt(document.getElementById('custom-mission-cycle')?.value) || 3,
+            // Tour preferences
+            tourLength: document.getElementById('tour-length')?.value || 'regular',
+            customTourLength: parseInt(document.getElementById('custom-tour-length-input')?.value) || 6,
+            tourTheme: document.getElementById('tour-theme')?.value || 'random',
+            tourFaction: document.getElementById('tour-faction')?.value || 'random',
+            tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all',
+            tourFactionPreference: document.getElementById('tour-faction-preference')?.value || 'any',
+            tourMissionTypePreference: document.getElementById('tour-mission-type-preference')?.value || 'either',
+            tourPlanet: document.getElementById('tour-planet')?.value || 'random'
         };
     }
 
@@ -960,6 +993,25 @@ class App {
                 }
             } else if (key === 'customMissionCycle') {
                 const element = document.getElementById('custom-mission-cycle');
+                if (element && this.preferences[key]) {
+                    element.value = this.preferences[key];
+                }
+            } else if (key === 'customTourLength') {
+                const element = document.getElementById('custom-tour-length-input');
+                if (element && this.preferences[key]) {
+                    element.value = this.preferences[key];
+                }
+            } else if (key === 'tourLength') {
+                const element = document.getElementById('tour-length');
+                if (element && this.preferences[key]) {
+                    element.value = this.preferences[key];
+                    // Trigger change event for custom tour length
+                    element.dispatchEvent(new Event('change'));
+                }
+            } else if (key.startsWith('tour')) {
+                // Handle other tour preferences
+                const elementId = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+                const element = document.getElementById(elementId);
                 if (element && this.preferences[key]) {
                     element.value = this.preferences[key];
                 }
@@ -1335,6 +1387,19 @@ class App {
     }
 
     determineTourLength(tourLengthPreference) {
+        // Handle custom tour length
+        if (tourLengthPreference === 'custom') {
+            const customTourLengthInput = document.getElementById('custom-tour-length-input');
+            if (customTourLengthInput) {
+                const customLength = parseInt(customTourLengthInput.value);
+                if (customLength && customLength >= 1) {
+                    return customLength;
+                }
+            }
+            // Fallback to regular if custom input is invalid
+            return 6;
+        }
+
         const tourLengths = {
             'quick': { min: 2, max: 3 },
             'short': { min: 4, max: 5 },
@@ -1748,6 +1813,7 @@ class App {
     getTourPreferences() {
         return {
             tourLength: document.getElementById('tour-length')?.value || 'regular',
+            customTourLength: parseInt(document.getElementById('custom-tour-length-input')?.value) || 6,
             tourTheme: document.getElementById('tour-theme')?.value || 'random',
             tourFaction: document.getElementById('tour-faction')?.value || 'random',
             tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all',

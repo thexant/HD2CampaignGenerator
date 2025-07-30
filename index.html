@@ -61,7 +61,13 @@
                     <option value="regular" selected>Regular (6-8 missions)</option>
                     <option value="long">Long (8-10 missions)</option>
                     <option value="legendary">Legendary (10-12 missions)</option>
+                    <option value="custom">Custom Length</option>
                 </select>
+            </div>
+
+            <div class="preference-group" id="custom-tour-length-group" style="display: none;">
+                <label for="custom-tour-length-input">Custom Tour Length (1-50 missions):</label>
+                <input type="number" id="custom-tour-length-input" min="1" max="50" value="6">
             </div>
 
             <!-- Legacies Mode Toggle -->
