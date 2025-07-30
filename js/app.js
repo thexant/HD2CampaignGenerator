@@ -781,22 +781,44 @@ class App {
     }
 
     handleConfirmCasualties() {
-        const checkboxes = document.querySelectorAll('#casualty-checkboxes input[type="checkbox"]:checked');
+        const deathInputs = document.querySelectorAll('#casualty-checkboxes input[type="number"]');
         const tour = this.currentTour;
         const currentMission = tour.missions[tour.currentMissionIndex];
         
-        checkboxes.forEach(checkbox => {
-            const memberIndex = parseInt(checkbox.value);
+        deathInputs.forEach(input => {
+            const memberIndex = parseInt(input.dataset.memberIndex);
+            let deathCount = parseInt(input.value) || 0;
             const member = this.squadMembers[memberIndex];
             
-            if (member && !member.isDead) {
-                member.deaths++;
-                member.lives--;
+            // Validate death count
+            if (deathCount < 0) deathCount = 0;
+            if (deathCount > 50) deathCount = 50;
+            
+            if (member && !member.isDead && deathCount > 0) {
+                // Ensure we don't exceed maximum reasonable deaths that would cause negative lives
+                const maxDeathsAllowed = member.lives + 10; // Allow some buffer for multiple deaths
+                if (deathCount > maxDeathsAllowed) {
+                    console.warn(`Capping death count for ${member.name} from ${deathCount} to ${maxDeathsAllowed} (based on available lives)`);
+                    deathCount = maxDeathsAllowed;
+                }
                 
-                console.log(`${member.name} died. Lives remaining: ${member.lives}`);
+                // Add the death count from this mission to total deaths
+                member.deaths += deathCount;
+                member.lives -= deathCount;
+                
+                console.log(`${member.name} died ${deathCount} time${deathCount > 1 ? 's' : ''} this mission. Total deaths: ${member.deaths}, Lives remaining: ${member.lives}`);
                 
                 if (member.lives <= 0) {
                     member.isDead = true;
+                    
+                    // In Character Mode, calculate additional character deaths
+                    let additionalCharacterDeaths = 0;
+                    if (this.characterMode && member.lives < 0) {
+                        // If lives are negative, that means extra characters died
+                        additionalCharacterDeaths = Math.abs(member.lives);
+                        member.lives = 0; // Set to 0 since they're dead
+                    }
+                    
                     member.deathMission = {
                         missionNumber: tour.currentMissionIndex + 1,
                         name: currentMission.name,
@@ -804,11 +826,18 @@ class App {
                         difficulty: currentMission.difficulty,
                         planet: currentMission.planet.name,
                         faction: currentMission.faction,
+                        missionDeathCount: deathCount, // Store deaths from this specific mission
+                        additionalCharacterDeaths: additionalCharacterDeaths, // Additional characters that died this mission
+                        additionalCharacterNames: [], // Names of additional characters (to be filled later)
+                        additionalCharacterNotes: [], // Notes for additional characters (to be filled later)
                         deathNote: '' // Will be filled in by death note dialog
                     };
                     // Add to pending death notes queue
                     this.pendingDeathNotes.push(member);
-                    console.log(`${member.name} is marked as KIA on mission ${member.deathMission.missionNumber}: ${member.deathMission.name}`);
+                    console.log(`${member.name} is marked as KIA on mission ${member.deathMission.missionNumber}: ${member.deathMission.name} (died ${deathCount} times in final mission, ${additionalCharacterDeaths} additional characters also died)`);
+                } else {
+                    // If they died but didn't go KIA, we might still want to track mission death counts
+                    console.log(`${member.name} survived despite ${deathCount} deaths this mission`);
                 }
             }
         });
@@ -836,7 +865,7 @@ class App {
         // Clear existing checkboxes
         checkboxContainer.innerHTML = '';
         
-        // Create checkboxes for living squad members
+        // Create death counters for living squad members
         const livingMembers = this.squadMembers.filter(member => !member.isDead);
         
         if (livingMembers.length === 0) {
@@ -847,19 +876,69 @@ class App {
         
         livingMembers.forEach((member, index) => {
             const originalIndex = this.squadMembers.indexOf(member);
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `casualty-${originalIndex}`;
-            checkbox.value = originalIndex;
-            
-            const label = document.createElement('label');
-            label.htmlFor = `casualty-${originalIndex}`;
-            label.textContent = `${member.name} (Lives: ${member.lives})`;
             
             const container = document.createElement('div');
-            container.className = 'casualty-checkbox';
-            container.appendChild(checkbox);
+            container.className = 'casualty-counter';
+            
+            const label = document.createElement('div');
+            label.className = 'casualty-label';
+            label.textContent = `${member.name} (Lives: ${member.lives})`;
+            
+            const counterContainer = document.createElement('div');
+            counterContainer.className = 'death-counter-container';
+            
+            const decrementBtn = document.createElement('button');
+            decrementBtn.type = 'button';
+            decrementBtn.className = 'death-counter-btn decrement';
+            decrementBtn.textContent = '−';
+            decrementBtn.onclick = () => {
+                const input = counterContainer.querySelector('input');
+                const currentValue = parseInt(input.value) || 0;
+                if (currentValue > 0) {
+                    input.value = currentValue - 1;
+                }
+            };
+            
+            const deathInput = document.createElement('input');
+            deathInput.type = 'number';
+            deathInput.className = 'death-counter-input';
+            deathInput.id = `casualty-${originalIndex}`;
+            deathInput.value = '0';
+            deathInput.min = '0';
+            deathInput.max = '50';
+            deathInput.dataset.memberIndex = originalIndex;
+            
+            // Add validation to prevent invalid inputs
+            deathInput.addEventListener('input', (e) => {
+                let value = parseInt(e.target.value) || 0;
+                if (value < 0) value = 0;
+                if (value > 50) value = 50;
+                e.target.value = value;
+            });
+            
+            const incrementBtn = document.createElement('button');
+            incrementBtn.type = 'button';
+            incrementBtn.className = 'death-counter-btn increment';
+            incrementBtn.textContent = '+';
+            incrementBtn.onclick = () => {
+                const input = counterContainer.querySelector('input');
+                const currentValue = parseInt(input.value) || 0;
+                if (currentValue < 50) {
+                    input.value = currentValue + 1;
+                }
+            };
+            
+            const deathsLabel = document.createElement('span');
+            deathsLabel.className = 'deaths-label';
+            deathsLabel.textContent = 'deaths this mission';
+            
+            counterContainer.appendChild(decrementBtn);
+            counterContainer.appendChild(deathInput);
+            counterContainer.appendChild(incrementBtn);
+            
             container.appendChild(label);
+            container.appendChild(counterContainer);
+            container.appendChild(deathsLabel);
             
             checkboxContainer.appendChild(container);
         });
@@ -905,23 +984,149 @@ class App {
     }
 
     showCharacterReplacementDialog(member) {
-        const modal = document.getElementById('character-replacement-modal');
-        const oldNameElement = document.getElementById('character-replacement-old-name');
-        const newNameInput = document.getElementById('character-replacement-input');
-        const deathNoteTextarea = document.getElementById('character-replacement-death-note');
-        const deathNoteCount = document.getElementById('character-replacement-death-count');
+        // Use a small delay to ensure DOM is fully ready
+        setTimeout(() => {
+            const modal = document.getElementById('character-replacement-modal');
+            const messageElement = document.getElementById('character-replacement-message');
+            const oldNameElement = document.getElementById('character-replacement-old-name');
+            const newNameInput = document.getElementById('character-replacement-input');
+            const deathNoteTextarea = document.getElementById('character-replacement-death-note');
+            const deathNoteCount = document.getElementById('character-replacement-death-count');
+            const additionalCharactersSection = document.getElementById('additional-characters-section');
+            const additionalCharacterInputs = document.getElementById('additional-character-inputs');
+
+            // Check if all required elements exist
+            if (!modal || !messageElement || !newNameInput || !deathNoteTextarea || !deathNoteCount) {
+                console.error('Character replacement dialog elements not found. Missing elements:', {
+                    modal: !!modal,
+                    messageElement: !!messageElement,
+                    oldNameElement: !!oldNameElement,
+                    newNameInput: !!newNameInput,
+                    deathNoteTextarea: !!deathNoteTextarea,
+                    deathNoteCount: !!deathNoteCount
+                });
+                // Skip this character and proceed to next if modal elements are missing
+                this.pendingDeathNotes.shift();
+                this.showNextDeathNoteDialog();
+                return;
+            }
+
+            this.showCharacterReplacementDialogInternal(member, {
+                modal,
+                messageElement,
+                oldNameElement,
+                newNameInput,
+                deathNoteTextarea,
+                deathNoteCount,
+                additionalCharactersSection,
+                additionalCharacterInputs
+            });
+        }, 10);
+    }
+
+    showCharacterReplacementDialogInternal(member, elements) {
+        const {
+            modal,
+            messageElement,
+            oldNameElement,
+            newNameInput,
+            deathNoteTextarea,
+            deathNoteCount,
+            additionalCharactersSection,
+            additionalCharacterInputs
+        } = elements;
 
         // Set up the dialog for character replacement
-        oldNameElement.textContent = member.name;
-        newNameInput.value = '';
-        deathNoteTextarea.value = '';
-        deathNoteCount.textContent = '0';
+        if (newNameInput) newNameInput.value = '';
+        if (deathNoteTextarea) deathNoteTextarea.value = '';
+        if (deathNoteCount) deathNoteCount.textContent = '0';
+        
+        // Check if additional characters died this mission
+        const additionalDeaths = member.deathMission?.additionalCharacterDeaths || 0;
+        
+        if (additionalDeaths > 0 && additionalCharactersSection && additionalCharacterInputs) {
+            // Update message to show multiple deaths
+            messageElement.innerHTML = `<strong id="character-replacement-old-name">${member.name}</strong> and <strong>${additionalDeaths}</strong> other character${additionalDeaths > 1 ? 's' : ''} were KIA this mission.`;
+            
+            // Show additional characters section
+            additionalCharactersSection.style.display = 'block';
+            
+            // Generate input fields for additional character names
+            additionalCharacterInputs.innerHTML = '';
+            for (let i = 0; i < additionalDeaths; i++) {
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'additional-character-input-group';
+                inputGroup.style.marginBottom = '10px';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.id = `additional-character-name-${i}`;
+                nameInput.placeholder = `Additional character ${i + 1} name (leave blank for auto-generation)`;
+                nameInput.maxLength = 30;
+                nameInput.style.width = '100%';
+                nameInput.style.marginBottom = '5px';
+                
+                const noteToggle = document.createElement('button');
+                noteToggle.type = 'button';
+                noteToggle.className = 'note-toggle-btn';
+                noteToggle.textContent = 'Add Note';
+                noteToggle.style.fontSize = '12px';
+                noteToggle.style.padding = '2px 8px';
+                noteToggle.style.marginBottom = '5px';
+                noteToggle.onclick = () => this.toggleAdditionalCharacterNote(i);
+                
+                const noteTextarea = document.createElement('textarea');
+                noteTextarea.id = `additional-character-note-${i}`;
+                noteTextarea.placeholder = 'Optional death note...';
+                noteTextarea.maxLength = 200;
+                noteTextarea.rows = 2;
+                noteTextarea.style.width = '100%';
+                noteTextarea.style.display = 'none';
+                
+                inputGroup.appendChild(nameInput);
+                inputGroup.appendChild(noteToggle);
+                inputGroup.appendChild(noteTextarea);
+                additionalCharacterInputs.appendChild(inputGroup);
+            }
+        } else {
+            // Single character death
+            messageElement.innerHTML = `<strong id="character-replacement-old-name">${member.name}</strong> has fallen in battle.`;
+            if (additionalCharactersSection) {
+                additionalCharactersSection.style.display = 'none';
+            }
+        }
         
         // Show modal
-        modal.style.display = 'flex';
+        if (modal) {
+            modal.style.display = 'flex';
+        }
         
         // Focus on the death note textarea first
-        setTimeout(() => deathNoteTextarea.focus(), 100);
+        if (deathNoteTextarea) {
+            setTimeout(() => deathNoteTextarea.focus(), 100);
+        }
+    }
+
+    toggleAdditionalCharacterNote(index) {
+        const noteTextarea = document.getElementById(`additional-character-note-${index}`);
+        const toggleBtn = document.querySelector(`#additional-character-inputs .additional-character-input-group:nth-child(${index + 1}) .note-toggle-btn`);
+        
+        if (!noteTextarea || !toggleBtn) {
+            console.error(`Additional character note elements not found for index ${index}`);
+            return;
+        }
+        
+        if (noteTextarea.style.display === 'none') {
+            noteTextarea.style.display = 'block';
+            toggleBtn.textContent = 'Hide Note';
+        } else {
+            noteTextarea.style.display = 'none';
+            toggleBtn.textContent = 'Add Note';
+        }
+    }
+
+    generateRandomHelldiverId() {
+        return Math.floor(10000 + Math.random() * 90000).toString();
     }
 
     handleDeathNoteOk() {
@@ -959,9 +1164,43 @@ class App {
         // Save the death note to the death mission (similar to regular death note handling)
         if (deadMember.deathMission) {
             deadMember.deathMission.deathNote = deathNote;
+            
+            // Process additional character names and notes
+            const additionalDeaths = deadMember.deathMission.additionalCharacterDeaths || 0;
+            if (additionalDeaths > 0) {
+                deadMember.deathMission.additionalCharacterNames = [];
+                deadMember.deathMission.additionalCharacterNotes = [];
+                
+                for (let i = 0; i < additionalDeaths; i++) {
+                    const nameInput = document.getElementById(`additional-character-name-${i}`);
+                    const noteTextarea = document.getElementById(`additional-character-note-${i}`);
+                    
+                    let characterName = nameInput ? nameInput.value.trim() : '';
+                    if (!characterName) {
+                        // Generate random Helldiver ID if name is blank
+                        characterName = `Helldiver-${this.generateRandomHelldiverId()}`;
+                    }
+                    
+                    const characterNote = noteTextarea ? noteTextarea.value.trim() : '';
+                    
+                    deadMember.deathMission.additionalCharacterNames.push(characterName);
+                    deadMember.deathMission.additionalCharacterNotes.push(characterNote);
+                    
+                    // Also add these additional characters to character legacies
+                    this.characterLegacies.push({
+                        name: characterName,
+                        deaths: 1, // Each additional character died once
+                        deathMission: {
+                            ...deadMember.deathMission,
+                            deathNote: characterNote
+                        },
+                        missionsCompleted: this.currentTour ? this.currentTour.currentMissionIndex : 0
+                    });
+                }
+            }
         }
 
-        // Archive the dead character to character legacies
+        // Archive the original dead character to character legacies
         this.characterLegacies.push({
             name: deadMember.name,
             deaths: deadMember.deaths,
@@ -971,9 +1210,14 @@ class App {
 
         // Replace the dead character with the new one
         deadMember.name = newName;
+        // Ensure maxLives is set correctly from current configuration
+        if (!deadMember.maxLives || deadMember.maxLives <= 0) {
+            deadMember.maxLives = this.livesConfig.livesPerCycle;
+        }
         deadMember.lives = deadMember.maxLives; // Reset lives for new character
         deadMember.deaths = 0;
         deadMember.isDead = false;
+        deadMember.missionsSinceLastReplenish = 0; // Reset mission counter for new character
         delete deadMember.deathMission; // Clear death mission data for the new character
 
         this.hideCharacterReplacementModal();
@@ -2440,28 +2684,88 @@ class App {
         
         if (this.characterLegacies.length > 0) {
             kiaSection.style.display = 'block';
-            kiaList.innerHTML = this.characterLegacies.map(character => {
-                let entryHTML = `<div class="kia-entry">
-                    <div class="kia-name">${character.name} (KIA after ${character.missionsCompleted} missions)</div>`;
+            
+            // Group characters by mission for better organization
+            const charactersGroupedByMission = {};
+            this.characterLegacies.forEach(character => {
+                const missionKey = character.deathMission ? 
+                    `${character.deathMission.missionNumber}-${character.deathMission.name}` : 
+                    'unknown';
                 
-                if (character.deathMission) {
-                    entryHTML += `<div class="kia-details">
-                        <strong>Final Mission:</strong> ${character.deathMission.name}<br>
-                        <strong>Objective:</strong> ${character.deathMission.primaryObjective}<br>
-                        <strong>Planet:</strong> ${character.deathMission.planet} vs ${character.deathMission.faction}<br>
-                        <strong>Difficulty:</strong> Level ${character.deathMission.difficulty.level} - ${character.deathMission.difficulty.name}`;
-                    
-                    // Add death note if it exists
-                    if (character.deathMission.deathNote && character.deathMission.deathNote.trim() !== '') {
-                        entryHTML += `<br><strong>Final Moments:</strong> <em>${character.deathMission.deathNote}</em>`;
-                    }
-                    
-                    entryHTML += '</div>';
+                if (!charactersGroupedByMission[missionKey]) {
+                    charactersGroupedByMission[missionKey] = [];
+                }
+                charactersGroupedByMission[missionKey].push(character);
+            });
+            
+            let kiaHTML = '';
+            
+            Object.entries(charactersGroupedByMission).forEach(([missionKey, characters]) => {
+                if (missionKey === 'unknown') {
+                    // Handle characters without death mission data
+                    characters.forEach(character => {
+                        kiaHTML += `<div class="kia-entry">
+                            <div class="kia-name">${character.name} (KIA after ${character.missionsCompleted} missions)</div>
+                        </div>`;
+                    });
+                    return;
                 }
                 
-                entryHTML += '</div>';
-                return entryHTML;
-            }).join('');
+                const firstCharacter = characters[0];
+                const mission = firstCharacter.deathMission;
+                
+                if (characters.length === 1) {
+                    // Single character death - use existing format
+                    let entryHTML = `<div class="kia-entry">
+                        <div class="kia-name">${firstCharacter.name} (KIA after ${firstCharacter.missionsCompleted} missions)</div>`;
+                    
+                    entryHTML += `<div class="kia-details">
+                        <strong>Final Mission:</strong> ${mission.name}<br>
+                        <strong>Objective:</strong> ${mission.primaryObjective}<br>
+                        <strong>Planet:</strong> ${mission.planet} vs ${mission.faction}<br>
+                        <strong>Difficulty:</strong> Level ${mission.difficulty.level} - ${mission.difficulty.name}`;
+                    
+                    // Add mission death count if available
+                    if (mission.missionDeathCount && mission.missionDeathCount > 1) {
+                        entryHTML += `<br><strong>Deaths in Final Mission:</strong> ${mission.missionDeathCount}`;
+                    }
+                    
+                    // Add death note if it exists
+                    if (mission.deathNote && mission.deathNote.trim() !== '') {
+                        entryHTML += `<br><strong>Final Moments:</strong> <em>${mission.deathNote}</em>`;
+                    }
+                    
+                    entryHTML += '</div></div>';
+                    kiaHTML += entryHTML;
+                } else {
+                    // Multiple character deaths in same mission - group them
+                    let entryHTML = `<div class="kia-entry kia-multiple-deaths">
+                        <div class="kia-mission-header">
+                            <strong>Mission ${mission.missionNumber}: ${mission.name}</strong><br>
+                            <em>${characters.length} characters KIA</em>
+                        </div>
+                        <div class="kia-details">
+                            <strong>Objective:</strong> ${mission.primaryObjective}<br>
+                            <strong>Planet:</strong> ${mission.planet} vs ${mission.faction}<br>
+                            <strong>Difficulty:</strong> Level ${mission.difficulty.level} - ${mission.difficulty.name}<br>
+                            <strong>Characters Lost:</strong><br>
+                            <div class="multiple-characters-list">`;
+                    
+                    characters.forEach(character => {
+                        entryHTML += `<div class="character-death-entry">
+                            • <strong>${character.name}</strong> (after ${character.missionsCompleted} missions)`;
+                        if (character.deathMission.deathNote && character.deathMission.deathNote.trim() !== '') {
+                            entryHTML += `<br>  <em>"${character.deathMission.deathNote}"</em>`;
+                        }
+                        entryHTML += `</div>`;
+                    });
+                    
+                    entryHTML += '</div></div></div>';
+                    kiaHTML += entryHTML;
+                }
+            });
+            
+            kiaList.innerHTML = kiaHTML;
         } else {
             kiaSection.style.display = 'none';
         }
@@ -2508,6 +2812,11 @@ class App {
                         <strong>Objective:</strong> ${member.deathMission.primaryObjective}<br>
                         <strong>Planet:</strong> ${member.deathMission.planet} vs ${member.deathMission.faction}<br>
                         <strong>Difficulty:</strong> Level ${member.deathMission.difficulty.level} - ${member.deathMission.difficulty.name}`;
+                    
+                    // Add mission death count if available
+                    if (member.deathMission.missionDeathCount && member.deathMission.missionDeathCount > 1) {
+                        entryHTML += `<br><strong>Deaths in Final Mission:</strong> ${member.deathMission.missionDeathCount}`;
+                    }
                     
                     // Add death note if it exists
                     if (member.deathMission.deathNote && member.deathMission.deathNote.trim() !== '') {

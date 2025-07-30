@@ -370,9 +370,9 @@
                     <h3>Mission Report: Casualties</h3>
                 </div>
                 <div class="dialog-content">
-                    <p>Did any squad members die during this mission?</p>
+                    <p>How many times did each squad member die during this mission?</p>
                     <div class="casualty-checkboxes" id="casualty-checkboxes">
-                        <!-- Squad member checkboxes will be dynamically generated -->
+                        <!-- Squad member death counters will be dynamically generated -->
                     </div>
                 </div>
                 <div class="dialog-actions">
@@ -422,13 +422,21 @@
                         <h3>Character KIA - New Character</h3>
                     </div>
                     <div class="dialog-content">
-                        <p><strong id="character-replacement-old-name">[Character Name]</strong> has fallen in battle.</p>
+                        <p id="character-replacement-message">[Character replacement message will be generated dynamically]</p>
                         
                         <div class="death-note-section">
                             <p>Add a note about their final moments:</p>
                             <textarea id="character-replacement-death-note" placeholder="Cause of death or final moments..." maxlength="500" rows="3"></textarea>
                             <div class="character-death-note-count">
                                 <span id="character-replacement-death-count">0</span>/500 characters
+                            </div>
+                        </div>
+                        
+                        <!-- Additional Characters Section (shown when multiple characters died) -->
+                        <div class="additional-characters-section" id="additional-characters-section" style="display: none;">
+                            <p>Additional characters that were KIA this mission:</p>
+                            <div id="additional-character-inputs">
+                                <!-- Additional character name inputs will be dynamically generated -->
                             </div>
                         </div>
                         
