@@ -80,6 +80,16 @@
                     </label>
                 </div>
                 <p class="legacies-mode-description">Track squad member lives and deaths throughout your tour</p>
+                
+                <!-- Character Mode Toggle (only visible when Legacies Mode is enabled) -->
+                <div class="character-mode-toggle" id="character-mode-toggle" style="display: none; margin-top: 15px;">
+                    <input type="checkbox" id="character-mode-checkbox">
+                    <label for="character-mode-checkbox">
+                        <span class="character-mode-label">Character Mode</span>
+                        <span class="character-mode-status" id="character-mode-status">OFF</span>
+                    </label>
+                    <p class="character-mode-description">Track a new character's legacy in this campaign each time they die</p>
+                </div>
             </div>
 
             <!-- Tour Theme Selection -->
@@ -382,6 +392,57 @@
                 <div class="dialog-actions">
                     <button id="confirm-reroll" class="generate-btn" onclick="app.handleConfirmReroll()">OK</button>
                     <button id="cancel-reroll" class="retry-btn" onclick="app.handleCancelReroll()">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Death Note Dialog -->
+            <div class="modal-overlay" id="death-note-modal" style="display: none;">
+                <div class="modal-dialog death-note-dialog">
+                    <div class="dialog-header">
+                        <h3>Helldiver KIA - Death Note</h3>
+                    </div>
+                    <div class="dialog-content">
+                        <p><strong id="death-note-player-name">[Player Name]</strong> has been marked as KIA.</p>
+                        <p>Add a note about their death:</p>
+                        <textarea id="death-note-input" placeholder="Cause of Death?" maxlength="500" rows="4"></textarea>
+                        <div class="death-note-character-count">
+                            <span id="death-note-count">0</span>/500 characters
+                        </div>
+                    </div>
+                    <div class="dialog-actions">
+                        <button id="death-note-ok" class="generate-btn">OK</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Character Replacement Dialog (Character Mode) -->
+            <div class="modal-overlay" id="character-replacement-modal" style="display: none;">
+                <div class="modal-dialog character-replacement-dialog">
+                    <div class="dialog-header">
+                        <h3>Character KIA - New Character</h3>
+                    </div>
+                    <div class="dialog-content">
+                        <p><strong id="character-replacement-old-name">[Character Name]</strong> has fallen in battle.</p>
+                        
+                        <div class="death-note-section">
+                            <p>Add a note about their final moments:</p>
+                            <textarea id="character-replacement-death-note" placeholder="Cause of death or final moments..." maxlength="500" rows="3"></textarea>
+                            <div class="character-death-note-count">
+                                <span id="character-replacement-death-count">0</span>/500 characters
+                            </div>
+                        </div>
+                        
+                        <div class="new-character-section">
+                            <p>Enter your new character's name:</p>
+                            <input type="text" id="character-replacement-input" placeholder="New character name" maxlength="30">
+                            <div class="character-replacement-note">
+                                <p>Your new character will start with full lives.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dialog-actions">
+                        <button id="character-replacement-ok" class="generate-btn">Continue with New Character</button>
+                    </div>
                 </div>
             </div>
 

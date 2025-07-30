@@ -5,7 +5,10 @@ class App {
         this.tourMode = true; // Always start with tour mode enabled
         this.currentTour = null;
         this.legaciesMode = false;
+        this.characterMode = false;
         this.squadMembers = [];
+        this.characterLegacies = []; // For tracking individual character histories
+        this.pendingDeathNotes = [];
         this.livesConfig = {
             mode: 'default',
             livesPerCycle: 2,
@@ -119,12 +122,14 @@ class App {
         if (customLivesCount) {
             customLivesCount.addEventListener('input', () => {
                 this.updateCustomLivesDisplay();
+                this.updateCustomLivesExplanation();
                 this.savePreferences();
             });
         }
         if (customMissionCycle) {
             customMissionCycle.addEventListener('input', () => {
                 this.updateCustomLivesDisplay();
+                this.updateCustomLivesExplanation();
                 this.savePreferences();
             });
         }
@@ -216,6 +221,12 @@ class App {
             legaciesCheckbox.addEventListener('change', (e) => this.handleLegaciesModeToggle(e));
         }
 
+        // Character mode checkbox
+        const characterCheckbox = document.getElementById('character-mode-checkbox');
+        if (characterCheckbox) {
+            characterCheckbox.addEventListener('change', (e) => this.handleCharacterModeToggle(e));
+        }
+
         // Death tracking dialog buttons
         const confirmCasualtiesBtn = document.getElementById('confirm-casualties');
         const noCasualtiesBtn = document.getElementById('no-casualties');
@@ -225,6 +236,34 @@ class App {
         }
         if (noCasualtiesBtn) {
             noCasualtiesBtn.addEventListener('click', () => this.handleNoCasualties());
+        }
+
+        // Death note dialog buttons
+        const deathNoteOkBtn = document.getElementById('death-note-ok');
+        const deathNoteInput = document.getElementById('death-note-input');
+        const deathNoteCount = document.getElementById('death-note-count');
+
+        if (deathNoteOkBtn) {
+            deathNoteOkBtn.addEventListener('click', () => this.handleDeathNoteOk());
+        }
+        if (deathNoteInput && deathNoteCount) {
+            deathNoteInput.addEventListener('input', () => {
+                deathNoteCount.textContent = deathNoteInput.value.length;
+            });
+        }
+
+        // Character replacement dialog button and textarea
+        const characterReplacementOkBtn = document.getElementById('character-replacement-ok');
+        const characterReplacementDeathNote = document.getElementById('character-replacement-death-note');
+        const characterReplacementDeathCount = document.getElementById('character-replacement-death-count');
+        
+        if (characterReplacementOkBtn) {
+            characterReplacementOkBtn.addEventListener('click', () => this.handleCharacterReplacementOk());
+        }
+        if (characterReplacementDeathNote && characterReplacementDeathCount) {
+            characterReplacementDeathNote.addEventListener('input', () => {
+                characterReplacementDeathCount.textContent = characterReplacementDeathNote.value.length;
+            });
         }
 
         // Legacies completion screen buttons
@@ -395,12 +434,21 @@ class App {
         const squadNamesGroup = document.getElementById('squad-names-group');
         const livesOptionsGroup = document.getElementById('lives-options-group');
         const customLivesGroup = document.getElementById('custom-lives-group');
+        const characterModeToggle = document.getElementById('character-mode-toggle');
 
         if (this.legaciesMode) {
             status.textContent = 'ON';
             status.classList.add('active');
             squadNamesGroup.style.display = 'block';
             livesOptionsGroup.style.display = 'block';
+            characterModeToggle.style.display = 'block';
+            
+            // Initialize lives mode based on current character mode state
+            if (this.characterMode) {
+                this.updateLivesModeForCharacterMode();
+            } else {
+                this.updateLivesModeForLegacyMode();
+            }
             
             // Show custom lives options if custom mode is selected
             const livesMode = document.getElementById('lives-mode')?.value;
@@ -422,6 +470,7 @@ class App {
                     squadNamesGroup.style.display = 'none';
                     livesOptionsGroup.style.display = 'none';
                     customLivesGroup.style.display = 'none';
+                    characterModeToggle.style.display = 'none';
                     return;
                 }
             }
@@ -431,6 +480,17 @@ class App {
             squadNamesGroup.style.display = 'none';
             livesOptionsGroup.style.display = 'none';
             customLivesGroup.style.display = 'none';
+            characterModeToggle.style.display = 'none';
+            
+            // Also disable character mode when legacies mode is disabled
+            this.characterMode = false;
+            const characterCheckbox = document.getElementById('character-mode-checkbox');
+            const characterStatus = document.getElementById('character-mode-status');
+            if (characterCheckbox) characterCheckbox.checked = false;
+            if (characterStatus) {
+                characterStatus.textContent = 'OFF';
+                characterStatus.classList.remove('active');
+            }
 
             // Reset tour if one is active (as per requirements)
             if (this.currentTour) {
@@ -445,6 +505,15 @@ class App {
                     status.classList.add('active');
                     squadNamesGroup.style.display = 'block';
                     livesOptionsGroup.style.display = 'block';
+                    characterModeToggle.style.display = 'block';
+                    
+                    // Initialize lives mode based on current character mode state
+                    if (this.characterMode) {
+                        this.updateLivesModeForCharacterMode();
+                    } else {
+                        this.updateLivesModeForLegacyMode();
+                    }
+                    
                     if (document.getElementById('lives-mode')?.value === 'custom') {
                         customLivesGroup.style.display = 'block';
                     }
@@ -456,23 +525,158 @@ class App {
         this.savePreferences();
     }
 
+    handleCharacterModeToggle(event) {
+        this.characterMode = event.target.checked;
+        const status = document.getElementById('character-mode-status');
+        
+        if (this.characterMode) {
+            status.textContent = 'ON';
+            status.classList.add('active');
+            this.updateSquadInputPlaceholders('character');
+            this.updateLivesModeForCharacterMode();
+        } else {
+            status.textContent = 'OFF';
+            status.classList.remove('active');
+            this.updateSquadInputPlaceholders('squad');
+            this.updateLivesModeForLegacyMode();
+        }
+        
+        this.savePreferences();
+    }
+
+    updateSquadInputPlaceholders(mode) {
+        for (let i = 1; i <= 4; i++) {
+            const input = document.getElementById(`squad-member-${i}`);
+            if (input) {
+                input.placeholder = mode === 'character' 
+                    ? `Character Name ${i}` 
+                    : `Squad Member ${i}`;
+            }
+        }
+    }
+
+    updateLivesModeForCharacterMode() {
+        const livesMode = document.getElementById('lives-mode');
+        const livesExplanation = document.getElementById('lives-explanation');
+        const customLivesLabel = document.querySelector('label[for="custom-lives-count"]');
+        const customMissionLabel = document.querySelector('label[for="custom-mission-cycle"]');
+        const customMissionInput = document.getElementById('custom-mission-cycle');
+        const customLivesInput = document.getElementById('custom-lives-count');
+
+        if (livesMode) {
+            livesMode.innerHTML = `
+                <option value="default" selected>Default (3 lives per character)</option>
+                <option value="permadeath">Permadeath (1 life per character)</option>
+                <option value="custom">Custom lives per character</option>
+            `;
+            
+            // Set to default if not already on a valid option
+            if (!['default', 'permadeath', 'custom'].includes(livesMode.value)) {
+                livesMode.value = 'default';
+            }
+        }
+
+        if (livesExplanation) {
+            livesExplanation.textContent = 'Each character starts with the specified number of lives. When they die, they are replaced with a new character.';
+        }
+
+        if (customLivesLabel) {
+            customLivesLabel.textContent = 'Lives per character:';
+        }
+
+        if (customMissionLabel && customMissionInput) {
+            customMissionLabel.style.display = 'none';
+            customMissionInput.style.display = 'none';
+            customMissionInput.previousElementSibling.style.display = 'none'; // Hide the label
+        }
+
+        if (customLivesInput) {
+            customLivesInput.value = '3'; // Set default to 3 for character mode
+        }
+
+        // Update custom lives explanation for character mode
+        this.updateCustomLivesExplanation();
+
+        // Update lives config with a small delay to ensure DOM is updated
+        setTimeout(() => this.updateLivesConfig(), 0);
+    }
+
+    updateLivesModeForLegacyMode() {
+        const livesMode = document.getElementById('lives-mode');
+        const livesExplanation = document.getElementById('lives-explanation');
+        const customLivesLabel = document.querySelector('label[for="custom-lives-count"]');
+        const customMissionLabel = document.querySelector('label[for="custom-mission-cycle"]');
+        const customMissionInput = document.getElementById('custom-mission-cycle');
+        const customLivesInput = document.getElementById('custom-lives-count');
+
+        if (livesMode) {
+            livesMode.innerHTML = `
+                <option value="default" selected>Default (2 lives per 3 missions)</option>
+                <option value="permadeath">Perma-death (1 life for entire tour)</option>
+                <option value="custom">Customizable</option>
+            `;
+            
+            // Set to default if not already on a valid option
+            if (!['default', 'permadeath', 'custom'].includes(livesMode.value)) {
+                livesMode.value = 'default';
+            }
+        }
+
+        if (livesExplanation) {
+            livesExplanation.textContent = 'Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).';
+        }
+
+        if (customLivesLabel) {
+            customLivesLabel.textContent = 'Lives per cycle:';
+        }
+
+        if (customMissionLabel && customMissionInput) {
+            customMissionLabel.style.display = 'block';
+            customMissionInput.style.display = 'block';
+            customMissionInput.previousElementSibling.style.display = 'block'; // Show the label
+        }
+
+        if (customLivesInput) {
+            customLivesInput.value = '2'; // Set default to 2 for legacy mode
+        }
+
+        // Update custom lives explanation for legacy mode
+        this.updateCustomLivesExplanation();
+
+        // Update lives config with a small delay to ensure DOM is updated
+        setTimeout(() => this.updateLivesConfig(), 0);
+    }
+
     handleLivesModeChange(event) {
         const customLivesGroup = document.getElementById('custom-lives-group');
         const livesExplanation = document.getElementById('lives-explanation');
         
         if (event.target.value === 'custom') {
             customLivesGroup.style.display = 'block';
-            livesExplanation.textContent = 'Configure your own lives and mission cycle settings below.';
+            if (this.characterMode) {
+                livesExplanation.textContent = 'Configure custom lives per character below.';
+            } else {
+                livesExplanation.textContent = 'Configure your own lives and mission cycle settings below.';
+            }
         } else {
             customLivesGroup.style.display = 'none';
             
             if (event.target.value === 'default') {
-                livesExplanation.textContent = 'Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).';
+                if (this.characterMode) {
+                    livesExplanation.textContent = 'Each character starts with the specified number of lives. When they die, they are replaced with a new character.';
+                } else {
+                    livesExplanation.textContent = 'Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).';
+                }
             } else if (event.target.value === 'permadeath') {
-                livesExplanation.textContent = 'Each player has only one life for the entire tour. Death marks them as KIA permanently.';
+                if (this.characterMode) {
+                    livesExplanation.textContent = 'Each character has only one life. When they die, they are replaced with a new character.';
+                } else {
+                    livesExplanation.textContent = 'Each player has only one life for the entire tour. Death marks them as KIA permanently.';
+                }
             }
         }
         
+        this.updateCustomLivesExplanation();
         this.updateLivesConfig();
         this.savePreferences();
     }
@@ -485,20 +689,50 @@ class App {
         document.getElementById('cycle-display').textContent = missionCycle;
     }
 
+    updateCustomLivesExplanation() {
+        const livesDisplay = document.getElementById('lives-display');
+        const cycleDisplay = document.getElementById('cycle-display');
+        const explanationDiv = document.querySelector('.custom-lives-explanation');
+        
+        if (!explanationDiv) return;
+        
+        const livesCount = document.getElementById('custom-lives-count')?.value || (this.characterMode ? '3' : '2');
+        
+        if (this.characterMode) {
+            explanationDiv.innerHTML = `Each character starts with <span id="lives-display">${livesCount}</span> lives.`;
+        } else {
+            const missionCycle = document.getElementById('custom-mission-cycle')?.value || '3';
+            explanationDiv.innerHTML = `Players get <span id="lives-display">${livesCount}</span> lives every <span id="cycle-display">${missionCycle}</span> missions.`;
+        }
+    }
+
     updateLivesConfig() {
         const livesMode = document.getElementById('lives-mode')?.value || 'default';
         
         this.livesConfig.mode = livesMode;
         
-        if (livesMode === 'custom') {
-            this.livesConfig.livesPerCycle = parseInt(document.getElementById('custom-lives-count')?.value) || 2;
-            this.livesConfig.missionCycle = parseInt(document.getElementById('custom-mission-cycle')?.value) || 3;
-        } else if (livesMode === 'default') {
-            this.livesConfig.livesPerCycle = 2;
-            this.livesConfig.missionCycle = 3;
-        } else if (livesMode === 'permadeath') {
-            this.livesConfig.livesPerCycle = 1;
-            this.livesConfig.missionCycle = 999; // Effectively never replenish
+        if (this.characterMode) {
+            // Character Mode: Lives are per-character, not per-cycle
+            if (livesMode === 'custom') {
+                this.livesConfig.livesPerCycle = parseInt(document.getElementById('custom-lives-count')?.value) || 3;
+            } else if (livesMode === 'default') {
+                this.livesConfig.livesPerCycle = 3; // Default 3 lives per character
+            } else if (livesMode === 'permadeath') {
+                this.livesConfig.livesPerCycle = 1; // 1 life per character
+            }
+            this.livesConfig.missionCycle = 999; // Never replenish in character mode
+        } else {
+            // Legacy Mode: Traditional lives per mission cycle
+            if (livesMode === 'custom') {
+                this.livesConfig.livesPerCycle = parseInt(document.getElementById('custom-lives-count')?.value) || 2;
+                this.livesConfig.missionCycle = parseInt(document.getElementById('custom-mission-cycle')?.value) || 3;
+            } else if (livesMode === 'default') {
+                this.livesConfig.livesPerCycle = 2;
+                this.livesConfig.missionCycle = 3;
+            } else if (livesMode === 'permadeath') {
+                this.livesConfig.livesPerCycle = 1;
+                this.livesConfig.missionCycle = 999; // Effectively never replenish
+            }
         }
     }
 
@@ -526,6 +760,9 @@ class App {
 
     updateSquadMemberLives(missionIndex) {
         if (!this.legaciesMode || !this.squadMembers.length) return;
+        
+        // In character mode, lives are per-character and don't replenish
+        if (this.characterMode) return;
         
         // Replenish lives if we've completed a cycle
         const cycleMissions = this.livesConfig.missionCycle;
@@ -566,15 +803,20 @@ class App {
                         primaryObjective: currentMission.primaryObjective.name || currentMission.primaryObjective.description,
                         difficulty: currentMission.difficulty,
                         planet: currentMission.planet.name,
-                        faction: currentMission.faction
+                        faction: currentMission.faction,
+                        deathNote: '' // Will be filled in by death note dialog
                     };
+                    // Add to pending death notes queue
+                    this.pendingDeathNotes.push(member);
                     console.log(`${member.name} is marked as KIA on mission ${member.deathMission.missionNumber}: ${member.deathMission.name}`);
                 }
             }
         });
         
         this.hideDeathTrackingDialog();
-        this.proceedToNextMission();
+        
+        // Show death note dialogs for players who died, then proceed
+        this.showNextDeathNoteDialog();
     }
 
     handleNoCasualties() {
@@ -628,6 +870,126 @@ class App {
     hideDeathTrackingDialog() {
         const dialog = document.getElementById('death-tracking-dialog');
         dialog.style.display = 'none';
+    }
+
+    showNextDeathNoteDialog() {
+        if (this.pendingDeathNotes.length === 0) {
+            // No more death notes to show, proceed to next mission
+            this.proceedToNextMission();
+            return;
+        }
+
+        const member = this.pendingDeathNotes[0]; // Get the first member in queue
+        
+        // In character mode, show character replacement dialog instead
+        if (this.characterMode) {
+            this.showCharacterReplacementDialog(member);
+            return;
+        }
+
+        const modal = document.getElementById('death-note-modal');
+        const playerNameElement = document.getElementById('death-note-player-name');
+        const deathNoteInput = document.getElementById('death-note-input');
+        const deathNoteCount = document.getElementById('death-note-count');
+
+        // Set up the dialog for this player
+        playerNameElement.textContent = member.name;
+        deathNoteInput.value = '';
+        deathNoteCount.textContent = '0';
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        // Focus on the textarea
+        setTimeout(() => deathNoteInput.focus(), 100);
+    }
+
+    showCharacterReplacementDialog(member) {
+        const modal = document.getElementById('character-replacement-modal');
+        const oldNameElement = document.getElementById('character-replacement-old-name');
+        const newNameInput = document.getElementById('character-replacement-input');
+        const deathNoteTextarea = document.getElementById('character-replacement-death-note');
+        const deathNoteCount = document.getElementById('character-replacement-death-count');
+
+        // Set up the dialog for character replacement
+        oldNameElement.textContent = member.name;
+        newNameInput.value = '';
+        deathNoteTextarea.value = '';
+        deathNoteCount.textContent = '0';
+        
+        // Show modal
+        modal.style.display = 'flex';
+        
+        // Focus on the death note textarea first
+        setTimeout(() => deathNoteTextarea.focus(), 100);
+    }
+
+    handleDeathNoteOk() {
+        if (this.pendingDeathNotes.length === 0) return;
+
+        const member = this.pendingDeathNotes.shift(); // Remove first member from queue
+        const deathNoteInput = document.getElementById('death-note-input');
+        const deathNote = deathNoteInput.value.trim();
+
+        // Save the death note (even if empty)
+        if (member.deathMission) {
+            member.deathMission.deathNote = deathNote;
+        }
+
+        this.hideDeathNoteModal();
+        
+        // Show next death note dialog or proceed to next mission
+        this.showNextDeathNoteDialog();
+    }
+
+    handleCharacterReplacementOk() {
+        if (this.pendingDeathNotes.length === 0) return;
+
+        const deadMember = this.pendingDeathNotes.shift(); // Remove first member from queue
+        const newNameInput = document.getElementById('character-replacement-input');
+        const deathNoteTextarea = document.getElementById('character-replacement-death-note');
+        const newName = newNameInput.value.trim();
+        const deathNote = deathNoteTextarea.value.trim();
+
+        if (!newName) {
+            alert('Please enter a name for your new character.');
+            return;
+        }
+
+        // Save the death note to the death mission (similar to regular death note handling)
+        if (deadMember.deathMission) {
+            deadMember.deathMission.deathNote = deathNote;
+        }
+
+        // Archive the dead character to character legacies
+        this.characterLegacies.push({
+            name: deadMember.name,
+            deaths: deadMember.deaths,
+            deathMission: deadMember.deathMission,
+            missionsCompleted: this.currentTour ? this.currentTour.currentMissionIndex : 0
+        });
+
+        // Replace the dead character with the new one
+        deadMember.name = newName;
+        deadMember.lives = deadMember.maxLives; // Reset lives for new character
+        deadMember.deaths = 0;
+        deadMember.isDead = false;
+        delete deadMember.deathMission; // Clear death mission data for the new character
+
+        this.hideCharacterReplacementModal();
+        
+        // Show next death dialog or proceed to next mission
+        this.showNextDeathNoteDialog();
+    }
+
+    hideDeathNoteModal() {
+        const modal = document.getElementById('death-note-modal');
+        modal.style.display = 'none';
+    }
+
+    hideCharacterReplacementModal() {
+        const modal = document.getElementById('character-replacement-modal');
+        modal.style.display = 'none';
     }
 
     proceedToNextMission() {
@@ -731,6 +1093,7 @@ class App {
             missionType: document.getElementById('mission-type-preference')?.value || 'both',
             targetType: document.getElementById('target-type-preference')?.value || 'mixed',
             legaciesMode: this.legaciesMode,
+            characterMode: this.characterMode,
             squadMembers: squadMembers,
             livesMode: document.getElementById('lives-mode')?.value || 'default',
             customLivesCount: parseInt(document.getElementById('custom-lives-count')?.value) || 2,
@@ -972,6 +1335,14 @@ class App {
                     // Trigger the toggle to show/hide related elements
                     this.handleLegaciesModeToggle({ target: checkbox });
                 }
+            } else if (key === 'characterMode') {
+                this.characterMode = this.preferences[key] || false;
+                const checkbox = document.getElementById('character-mode-checkbox');
+                if (checkbox) {
+                    checkbox.checked = this.characterMode;
+                    // Trigger the toggle to update UI elements
+                    this.handleCharacterModeToggle({ target: checkbox });
+                }
             } else if (key === 'squadMembers') {
                 const names = this.preferences[key] || [];
                 for (let i = 0; i < 4; i++) {
@@ -1160,6 +1531,8 @@ class App {
         
         // Initialize squad members if Legacies mode is enabled
         if (this.legaciesMode) {
+            // Ensure lives config is up to date before initializing squad members
+            this.updateLivesConfig();
             this.initializeSquadMembers();
         }
         
@@ -2031,6 +2404,81 @@ class App {
             <p><strong>Average Difficulty:</strong> ${(tour.missions.reduce((sum, m) => sum + m.difficulty.level, 0) / tour.missions.length).toFixed(1)}</p>
         `;
 
+        if (this.characterMode) {
+            this.updateCharacterModeCompletionScreen(tour);
+        } else {
+            this.updateLegacyModeCompletionScreen(tour);
+        }
+    }
+
+    updateCharacterModeCompletionScreen(tour) {
+        // Update survivors section with character-specific title
+        const survivorsSection = document.querySelector('#survivors-section h3');
+        if (survivorsSection) {
+            survivorsSection.textContent = 'Surviving Characters';
+        }
+
+        const survivorsList = document.getElementById('survivors-list');
+        const survivors = this.squadMembers.filter(member => !member.isDead);
+        
+        if (survivors.length > 0) {
+            survivorsList.innerHTML = survivors.map(member => 
+                `<div class="survivor-entry">${member.name} (${member.lives} lives remaining)</div>`
+            ).join('');
+        } else {
+            survivorsList.innerHTML = '<div class="no-survivors">No surviving characters - All fallen in battle</div>';
+        }
+
+        // Update KIA section with character legacies
+        const kiaSection = document.getElementById('kia-section');
+        const kiaTitle = document.querySelector('#kia-section h3');
+        if (kiaTitle) {
+            kiaTitle.textContent = 'Characters Fallen in Battle';
+        }
+
+        const kiaList = document.getElementById('kia-list');
+        
+        if (this.characterLegacies.length > 0) {
+            kiaSection.style.display = 'block';
+            kiaList.innerHTML = this.characterLegacies.map(character => {
+                let entryHTML = `<div class="kia-entry">
+                    <div class="kia-name">${character.name} (KIA after ${character.missionsCompleted} missions)</div>`;
+                
+                if (character.deathMission) {
+                    entryHTML += `<div class="kia-details">
+                        <strong>Final Mission:</strong> ${character.deathMission.name}<br>
+                        <strong>Objective:</strong> ${character.deathMission.primaryObjective}<br>
+                        <strong>Planet:</strong> ${character.deathMission.planet} vs ${character.deathMission.faction}<br>
+                        <strong>Difficulty:</strong> Level ${character.deathMission.difficulty.level} - ${character.deathMission.difficulty.name}`;
+                    
+                    // Add death note if it exists
+                    if (character.deathMission.deathNote && character.deathMission.deathNote.trim() !== '') {
+                        entryHTML += `<br><strong>Final Moments:</strong> <em>${character.deathMission.deathNote}</em>`;
+                    }
+                    
+                    entryHTML += '</div>';
+                }
+                
+                entryHTML += '</div>';
+                return entryHTML;
+            }).join('');
+        } else {
+            kiaSection.style.display = 'none';
+        }
+    }
+
+    updateLegacyModeCompletionScreen(tour) {
+        // Reset section titles to original
+        const survivorsSection = document.querySelector('#survivors-section h3');
+        if (survivorsSection) {
+            survivorsSection.textContent = 'Surviving Helldivers';
+        }
+
+        const kiaTitle = document.querySelector('#kia-section h3');
+        if (kiaTitle) {
+            kiaTitle.textContent = 'Helldivers KIA';
+        }
+
         // Update survivors list
         const survivorsList = document.getElementById('survivors-list');
         const survivors = this.squadMembers.filter(member => !member.isDead);
@@ -2059,8 +2507,14 @@ class App {
                         <strong>KIA on Mission ${member.deathMission.missionNumber}:</strong> ${member.deathMission.name}<br>
                         <strong>Objective:</strong> ${member.deathMission.primaryObjective}<br>
                         <strong>Planet:</strong> ${member.deathMission.planet} vs ${member.deathMission.faction}<br>
-                        <strong>Difficulty:</strong> Level ${member.deathMission.difficulty.level} - ${member.deathMission.difficulty.name}
-                    </div>`;
+                        <strong>Difficulty:</strong> Level ${member.deathMission.difficulty.level} - ${member.deathMission.difficulty.name}`;
+                    
+                    // Add death note if it exists
+                    if (member.deathMission.deathNote && member.deathMission.deathNote.trim() !== '') {
+                        entryHTML += `<br><strong>Cause of Death:</strong> <em>${member.deathMission.deathNote}</em>`;
+                    }
+                    
+                    entryHTML += '</div>';
                 }
                 
                 entryHTML += '</div>';
@@ -2099,8 +2553,11 @@ class App {
 
     handleStartNewTour() {
         this.currentTour = null;
+        this.pendingDeathNotes = []; // Clear any pending death notes
         document.getElementById('tour-completion').style.display = 'none';
         document.getElementById('tour-failure').style.display = 'none';
+        document.getElementById('legacies-completion').style.display = 'none';
+        document.getElementById('death-note-modal').style.display = 'none';
         this.handleStartTour();
     }
 
@@ -2116,6 +2573,7 @@ class App {
 
     handleReturnToCampaigns() {
         this.currentTour = null;
+        this.pendingDeathNotes = []; // Clear any pending death notes
         // DO NOT disable tour mode - keep it always on
         this.tourMode = true;
         
@@ -2168,6 +2626,7 @@ class App {
         document.getElementById('tour-completion').style.display = 'none';
         document.getElementById('tour-failure').style.display = 'none';
         document.getElementById('death-tracking-dialog').style.display = 'none';
+        document.getElementById('death-note-modal').style.display = 'none';
         document.getElementById('legacies-completion').style.display = 'none';
         document.getElementById('mission-reroll-dialog').style.display = 'none';
     }
