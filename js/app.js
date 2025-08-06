@@ -4,16 +4,8 @@ class App {
         this.preferences = this.loadPreferences();
         this.tourMode = true; // Always start with tour mode enabled
         this.currentTour = null;
-        this.legaciesMode = false;
-        this.characterMode = false;
+        this.statsMode = false;
         this.squadMembers = [];
-        this.characterLegacies = []; // For tracking individual character histories
-        this.pendingDeathNotes = [];
-        this.livesConfig = {
-            mode: 'default',
-            livesPerCycle: 2,
-            missionCycle: 3
-        };
         // Background data loading state
         this.backgroundDataLoading = false;
         this.backgroundDataReady = false;
@@ -53,6 +45,15 @@ class App {
             retryBtn.addEventListener('click', () => this.handleGenerateCampaign());
         }
 
+        // Campaign Builder button
+        const campaignBuilderBtn = document.getElementById('campaign-builder');
+        if (campaignBuilderBtn) {
+            campaignBuilderBtn.addEventListener('click', () => this.handleShowCampaignBuilder());
+        }
+
+        // Campaign Builder navigation
+        this.setupCampaignBuilderListeners();
+
         // Custom length toggle
         const campaignLengthSelect = document.getElementById('campaign-length');
         if (campaignLengthSelect) {
@@ -71,16 +72,15 @@ class App {
         // Tour mode handlers
         this.setupTourModeListeners();
 
-        // Legacies mode handlers
-        this.setupLegaciesModeListeners();
+        // Stats mode handlers
+        this.setupStatsModeListeners();
 
-        // Mission reroll handlers use onclick in HTML
     }
 
     setupPreferenceListeners() {
         const preferenceIds = [
             'campaign-length', 'faction-preference', 'difficulty-preference', 'biome-preference',
-            'mission-type-preference', 'target-type-preference', 'tour-length', 'tour-theme', 'tour-faction', 'tour-difficulty', 'tour-faction-preference', 'tour-mission-type-preference', 'tour-planet', 'lives-mode'
+            'mission-type-preference', 'target-type-preference', 'tour-length', 'tour-theme', 'tour-faction', 'tour-difficulty', 'tour-faction-preference', 'tour-mission-type-preference', 'tour-planet'
         ];
 
         preferenceIds.forEach(id => {
@@ -116,23 +116,6 @@ class App {
             }
         }
 
-        // Custom lives inputs
-        const customLivesCount = document.getElementById('custom-lives-count');
-        const customMissionCycle = document.getElementById('custom-mission-cycle');
-        if (customLivesCount) {
-            customLivesCount.addEventListener('input', () => {
-                this.updateCustomLivesDisplay();
-                this.updateCustomLivesExplanation();
-                this.savePreferences();
-            });
-        }
-        if (customMissionCycle) {
-            customMissionCycle.addEventListener('input', () => {
-                this.updateCustomLivesDisplay();
-                this.updateCustomLivesExplanation();
-                this.savePreferences();
-            });
-        }
 
         // Tour theme change handler to show/hide faction selection
         const tourThemeSelect = document.getElementById('tour-theme');
@@ -151,11 +134,6 @@ class App {
             });
         }
 
-        // Lives mode change handler
-        const livesModeSelect = document.getElementById('lives-mode');
-        if (livesModeSelect) {
-            livesModeSelect.addEventListener('change', (e) => this.handleLivesModeChange(e));
-        }
     }
 
     setupTourModeListeners() {
@@ -188,6 +166,38 @@ class App {
             abandonTourBtn.addEventListener('click', () => this.handleAbandonTour());
         }
 
+        // Export/Import tour buttons
+        const exportTourBtn = document.getElementById('export-tour');
+        if (exportTourBtn) {
+            exportTourBtn.addEventListener('click', () => this.handleExportTour());
+        }
+
+        const exportCampaignFromTourBtn = document.getElementById('export-campaign-from-tour');
+        if (exportCampaignFromTourBtn) {
+            exportCampaignFromTourBtn.addEventListener('click', () => this.handleExportCampaignFromTour());
+        }
+
+        const importTourBtn = document.getElementById('import-tour');
+        if (importTourBtn) {
+            importTourBtn.addEventListener('click', () => this.handleImportTour());
+        }
+
+        const importTourFile = document.getElementById('import-tour-file');
+        if (importTourFile) {
+            importTourFile.addEventListener('change', () => this.importTour(importTourFile));
+        }
+
+        // Unified import campaign button (handles both tours and campaigns)
+        const importCampaignMainBtn = document.getElementById('import-campaign-main');
+        if (importCampaignMainBtn) {
+            importCampaignMainBtn.addEventListener('click', () => this.handleImportCampaignMain());
+        }
+
+        const importCampaignMainFile = document.getElementById('import-campaign-main-file');
+        if (importCampaignMainFile) {
+            importCampaignMainFile.addEventListener('change', () => this.handleUnifiedImport(importCampaignMainFile));
+        }
+
         // Briefing acknowledgment
         const acknowledgeBriefingBtn = document.getElementById('acknowledge-briefing');
         if (acknowledgeBriefingBtn) {
@@ -214,67 +224,36 @@ class App {
         }
     }
 
-    setupLegaciesModeListeners() {
-        // Legacies mode checkbox
-        const legaciesCheckbox = document.getElementById('legacies-mode-checkbox');
-        if (legaciesCheckbox) {
-            legaciesCheckbox.addEventListener('change', (e) => this.handleLegaciesModeToggle(e));
+    setupStatsModeListeners() {
+        // Stats mode checkbox
+        const statsCheckbox = document.getElementById('stats-mode-checkbox');
+        if (statsCheckbox) {
+            statsCheckbox.addEventListener('change', (e) => this.handleStatsModeToggle(e));
         }
 
-        // Character mode checkbox
-        const characterCheckbox = document.getElementById('character-mode-checkbox');
-        if (characterCheckbox) {
-            characterCheckbox.addEventListener('change', (e) => this.handleCharacterModeToggle(e));
-        }
 
-        // Death tracking dialog buttons
-        const confirmCasualtiesBtn = document.getElementById('confirm-casualties');
-        const noCasualtiesBtn = document.getElementById('no-casualties');
+        // Stats tracking dialog buttons
+        const confirmStatsBtn = document.getElementById('confirm-stats');
+        const skipStatsBtn = document.getElementById('skip-stats');
         
-        if (confirmCasualtiesBtn) {
-            confirmCasualtiesBtn.addEventListener('click', () => this.handleConfirmCasualties());
+        if (confirmStatsBtn) {
+            confirmStatsBtn.addEventListener('click', () => this.handleConfirmStats());
         }
-        if (noCasualtiesBtn) {
-            noCasualtiesBtn.addEventListener('click', () => this.handleNoCasualties());
-        }
-
-        // Death note dialog buttons
-        const deathNoteOkBtn = document.getElementById('death-note-ok');
-        const deathNoteInput = document.getElementById('death-note-input');
-        const deathNoteCount = document.getElementById('death-note-count');
-
-        if (deathNoteOkBtn) {
-            deathNoteOkBtn.addEventListener('click', () => this.handleDeathNoteOk());
-        }
-        if (deathNoteInput && deathNoteCount) {
-            deathNoteInput.addEventListener('input', () => {
-                deathNoteCount.textContent = deathNoteInput.value.length;
-            });
+        if (skipStatsBtn) {
+            skipStatsBtn.addEventListener('click', () => this.handleSkipStats());
         }
 
-        // Character replacement dialog button and textarea
-        const characterReplacementOkBtn = document.getElementById('character-replacement-ok');
-        const characterReplacementDeathNote = document.getElementById('character-replacement-death-note');
-        const characterReplacementDeathCount = document.getElementById('character-replacement-death-count');
-        
-        if (characterReplacementOkBtn) {
-            characterReplacementOkBtn.addEventListener('click', () => this.handleCharacterReplacementOk());
-        }
-        if (characterReplacementDeathNote && characterReplacementDeathCount) {
-            characterReplacementDeathNote.addEventListener('input', () => {
-                characterReplacementDeathCount.textContent = characterReplacementDeathNote.value.length;
-            });
-        }
 
-        // Legacies completion screen buttons
-        const startNewLegaciesTourBtn = document.getElementById('start-new-legacies-tour');
-        const returnToCampaignsLegaciesBtn = document.getElementById('return-to-campaigns-legacies');
 
-        if (startNewLegaciesTourBtn) {
-            startNewLegaciesTourBtn.addEventListener('click', () => this.handleStartNewTour());
+        // Stats completion screen buttons
+        const startNewStatsTourBtn = document.getElementById('start-new-stats-tour');
+        const returnToCampaignsStatsBtn = document.getElementById('return-to-campaigns-stats');
+
+        if (startNewStatsTourBtn) {
+            startNewStatsTourBtn.addEventListener('click', () => this.handleStartNewTour());
         }
-        if (returnToCampaignsLegaciesBtn) {
-            returnToCampaignsLegaciesBtn.addEventListener('click', () => this.handleReturnToCampaigns());
+        if (returnToCampaignsStatsBtn) {
+            returnToCampaignsStatsBtn.addEventListener('click', () => this.handleReturnToCampaigns());
         }
     }
 
@@ -369,6 +348,7 @@ class App {
     handleTourThemeChange(event) {
         const tourFactionGroup = document.getElementById('tour-faction-group');
         const tourPlanetGroup = document.getElementById('tour-planet-group');
+        const majorOrderInfoGroup = document.getElementById('major-order-info-group');
         
         if (tourFactionGroup) {
             if (event.target.value === 'faction_focused') {
@@ -387,12 +367,22 @@ class App {
             }
         }
         
+        if (majorOrderInfoGroup) {
+            if (event.target.value === 'major_order') {
+                majorOrderInfoGroup.style.display = 'block';
+                this.loadMajorOrderInfo();
+            } else {
+                majorOrderInfoGroup.style.display = 'none';
+            }
+        }
+        
         this.savePreferences();
     }
 
     async populatePlanetOptions() {
         try {
             const gameData = await apiService.getAllGameData();
+            this.lastGameData = gameData; // Store for campaign builder
             const planets = gameData.planets;
             const enemyPlanets = apiService.getEnemyPlanets(planets);
             
@@ -408,6 +398,11 @@ class App {
             
             // Sort planets alphabetically
             availablePlanets.sort((a, b) => a.name.localeCompare(b.name));
+            
+            console.log(`WORKING GENERATOR DEBUG: Found ${availablePlanets.length} planets for faction ${factionPreference}:`);
+            availablePlanets.forEach(planet => {
+                console.log(`- ${planet.name}: liberation=${planet.liberation}%, owner=${planet.currentOwner}, disabled=${planet.disabled}, hasRegions=${planet.availableRegions?.length || 0}`);
+            });
             
             const planetSelect = document.getElementById('tour-planet');
             if (planetSelect) {
@@ -428,49 +423,84 @@ class App {
         }
     }
 
-    handleLegaciesModeToggle(event) {
-        this.legaciesMode = event.target.checked;
-        const status = document.getElementById('legacies-mode-status');
-        const squadNamesGroup = document.getElementById('squad-names-group');
-        const livesOptionsGroup = document.getElementById('lives-options-group');
-        const customLivesGroup = document.getElementById('custom-lives-group');
-        const characterModeToggle = document.getElementById('character-mode-toggle');
+    async loadMajorOrderInfo() {
+        try {
+            const titleElement = document.getElementById('major-order-title');
+            const briefingElement = document.getElementById('major-order-briefing');
+            const statusElement = document.getElementById('major-order-status');
+            
+            titleElement.textContent = 'Loading Major Order...';
+            briefingElement.textContent = '';
+            statusElement.textContent = '';
+            
+            const majorOrderDetails = await apiService.getMajorOrderDetails();
+            
+            if (majorOrderDetails) {
+                titleElement.textContent = majorOrderDetails.title || 'MAJOR ORDER';
+                briefingElement.textContent = majorOrderDetails.briefing || 'No briefing available';
+                
+                const planets = await apiService.getMajorOrderPlanets();
+                let statusText = '';
+                
+                if (planets.length > 0) {
+                    statusText = `Active on ${planets.length} planet${planets.length !== 1 ? 's' : ''}: `;
+                    statusText += planets.slice(0, 3).map(p => p.name).join(', ');
+                    if (planets.length > 3) {
+                        statusText += ` and ${planets.length - 3} more`;
+                    }
+                } else if (majorOrderDetails.factions && majorOrderDetails.factions.length > 0) {
+                    statusText = `Target faction${majorOrderDetails.factions.length !== 1 ? 's' : ''}: ${majorOrderDetails.factions.join(', ')}`;
+                } else {
+                    statusText = 'No specific targets identified';
+                }
+                
+                if (majorOrderDetails.expiresIn > 0) {
+                    const hours = Math.floor(majorOrderDetails.expiresIn / 3600);
+                    const days = Math.floor(hours / 24);
+                    if (days > 0) {
+                        statusText += ` | Expires in ${days} day${days !== 1 ? 's' : ''}`;
+                    } else {
+                        statusText += ` | Expires in ${hours} hour${hours !== 1 ? 's' : ''}`;
+                    }
+                }
+                
+                statusElement.textContent = statusText;
+            } else {
+                titleElement.textContent = 'No Active Major Order';
+                briefingElement.textContent = 'There is currently no active Major Order. Check back later or select a different tour theme.';
+                statusElement.textContent = '';
+            }
+        } catch (error) {
+            console.error('Failed to load Major Order info:', error);
+            const titleElement = document.getElementById('major-order-title');
+            const briefingElement = document.getElementById('major-order-briefing');
+            titleElement.textContent = 'Failed to Load Major Order';
+            briefingElement.textContent = 'Unable to fetch Major Order data. Please try again later.';
+        }
+    }
 
-        if (this.legaciesMode) {
+    handleStatsModeToggle(event) {
+        this.statsMode = event.target.checked;
+        const status = document.getElementById('stats-mode-status');
+        const squadNamesGroup = document.getElementById('squad-names-group');
+
+        if (this.statsMode) {
             status.textContent = 'ON';
             status.classList.add('active');
             squadNamesGroup.style.display = 'block';
-            livesOptionsGroup.style.display = 'block';
-            characterModeToggle.style.display = 'block';
-            
-            // Initialize lives mode based on current character mode state
-            if (this.characterMode) {
-                this.updateLivesModeForCharacterMode();
-            } else {
-                this.updateLivesModeForLegacyMode();
-            }
-            
-            // Show custom lives options if custom mode is selected
-            const livesMode = document.getElementById('lives-mode')?.value;
-            if (livesMode === 'custom') {
-                customLivesGroup.style.display = 'block';
-            }
 
             // Reset tour if one is active (as per requirements)
             if (this.currentTour) {
-                if (confirm('Enabling Legacies Mode will reset your current tour. Continue?')) {
+                if (confirm('Enabling Stats Mode will reset your current tour. Continue?')) {
                     this.currentTour = null;
                     this.handleReturnToCampaigns();
                 } else {
                     // User cancelled, revert toggle
                     event.target.checked = false;
-                    this.legaciesMode = false;
+                    this.statsMode = false;
                     status.textContent = 'OFF';
                     status.classList.remove('active');
                     squadNamesGroup.style.display = 'none';
-                    livesOptionsGroup.style.display = 'none';
-                    customLivesGroup.style.display = 'none';
-                    characterModeToggle.style.display = 'none';
                     return;
                 }
             }
@@ -478,45 +508,19 @@ class App {
             status.textContent = 'OFF';
             status.classList.remove('active');
             squadNamesGroup.style.display = 'none';
-            livesOptionsGroup.style.display = 'none';
-            customLivesGroup.style.display = 'none';
-            characterModeToggle.style.display = 'none';
-            
-            // Also disable character mode when legacies mode is disabled
-            this.characterMode = false;
-            const characterCheckbox = document.getElementById('character-mode-checkbox');
-            const characterStatus = document.getElementById('character-mode-status');
-            if (characterCheckbox) characterCheckbox.checked = false;
-            if (characterStatus) {
-                characterStatus.textContent = 'OFF';
-                characterStatus.classList.remove('active');
-            }
 
             // Reset tour if one is active (as per requirements)
             if (this.currentTour) {
-                if (confirm('Disabling Legacies Mode will reset your current tour. Continue?')) {
+                if (confirm('Disabling Stats Mode will reset your current tour. Continue?')) {
                     this.currentTour = null;
                     this.handleReturnToCampaigns();
                 } else {
                     // User cancelled, revert toggle
                     event.target.checked = true;
-                    this.legaciesMode = true;
+                    this.statsMode = true;
                     status.textContent = 'ON';
                     status.classList.add('active');
                     squadNamesGroup.style.display = 'block';
-                    livesOptionsGroup.style.display = 'block';
-                    characterModeToggle.style.display = 'block';
-                    
-                    // Initialize lives mode based on current character mode state
-                    if (this.characterMode) {
-                        this.updateLivesModeForCharacterMode();
-                    } else {
-                        this.updateLivesModeForLegacyMode();
-                    }
-                    
-                    if (document.getElementById('lives-mode')?.value === 'custom') {
-                        customLivesGroup.style.display = 'block';
-                    }
                     return;
                 }
             }
@@ -525,216 +529,18 @@ class App {
         this.savePreferences();
     }
 
-    handleCharacterModeToggle(event) {
-        this.characterMode = event.target.checked;
-        const status = document.getElementById('character-mode-status');
-        
-        if (this.characterMode) {
-            status.textContent = 'ON';
-            status.classList.add('active');
-            this.updateSquadInputPlaceholders('character');
-            this.updateLivesModeForCharacterMode();
-        } else {
-            status.textContent = 'OFF';
-            status.classList.remove('active');
-            this.updateSquadInputPlaceholders('squad');
-            this.updateLivesModeForLegacyMode();
-        }
-        
-        this.savePreferences();
-    }
 
-    updateSquadInputPlaceholders(mode) {
+    updateSquadInputPlaceholders() {
         for (let i = 1; i <= 4; i++) {
             const input = document.getElementById(`squad-member-${i}`);
             if (input) {
-                input.placeholder = mode === 'character' 
-                    ? `Character Name ${i}` 
-                    : `Squad Member ${i}`;
+                input.placeholder = `Squad Member ${i}`;
             }
         }
     }
 
-    updateLivesModeForCharacterMode() {
-        const livesMode = document.getElementById('lives-mode');
-        const livesExplanation = document.getElementById('lives-explanation');
-        const customLivesLabel = document.querySelector('label[for="custom-lives-count"]');
-        const customMissionLabel = document.querySelector('label[for="custom-mission-cycle"]');
-        const customMissionInput = document.getElementById('custom-mission-cycle');
-        const customLivesInput = document.getElementById('custom-lives-count');
 
-        if (livesMode) {
-            livesMode.innerHTML = `
-                <option value="default" selected>Default (3 lives per character)</option>
-                <option value="permadeath">Permadeath (1 life per character)</option>
-                <option value="custom">Custom lives per character</option>
-            `;
-            
-            // Set to default if not already on a valid option
-            if (!['default', 'permadeath', 'custom'].includes(livesMode.value)) {
-                livesMode.value = 'default';
-            }
-        }
 
-        if (livesExplanation) {
-            livesExplanation.textContent = 'Each character starts with the specified number of lives. When they die, they are replaced with a new character.';
-        }
-
-        if (customLivesLabel) {
-            customLivesLabel.textContent = 'Lives per character:';
-        }
-
-        if (customMissionLabel && customMissionInput) {
-            customMissionLabel.style.display = 'none';
-            customMissionInput.style.display = 'none';
-            customMissionInput.previousElementSibling.style.display = 'none'; // Hide the label
-        }
-
-        if (customLivesInput) {
-            customLivesInput.value = '3'; // Set default to 3 for character mode
-        }
-
-        // Update custom lives explanation for character mode
-        this.updateCustomLivesExplanation();
-
-        // Update lives config with a small delay to ensure DOM is updated
-        setTimeout(() => this.updateLivesConfig(), 0);
-    }
-
-    updateLivesModeForLegacyMode() {
-        const livesMode = document.getElementById('lives-mode');
-        const livesExplanation = document.getElementById('lives-explanation');
-        const customLivesLabel = document.querySelector('label[for="custom-lives-count"]');
-        const customMissionLabel = document.querySelector('label[for="custom-mission-cycle"]');
-        const customMissionInput = document.getElementById('custom-mission-cycle');
-        const customLivesInput = document.getElementById('custom-lives-count');
-
-        if (livesMode) {
-            livesMode.innerHTML = `
-                <option value="default" selected>Default (2 lives per 3 missions)</option>
-                <option value="permadeath">Perma-death (1 life for entire tour)</option>
-                <option value="custom">Customizable</option>
-            `;
-            
-            // Set to default if not already on a valid option
-            if (!['default', 'permadeath', 'custom'].includes(livesMode.value)) {
-                livesMode.value = 'default';
-            }
-        }
-
-        if (livesExplanation) {
-            livesExplanation.textContent = 'Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).';
-        }
-
-        if (customLivesLabel) {
-            customLivesLabel.textContent = 'Lives per cycle:';
-        }
-
-        if (customMissionLabel && customMissionInput) {
-            customMissionLabel.style.display = 'block';
-            customMissionInput.style.display = 'block';
-            customMissionInput.previousElementSibling.style.display = 'block'; // Show the label
-        }
-
-        if (customLivesInput) {
-            customLivesInput.value = '2'; // Set default to 2 for legacy mode
-        }
-
-        // Update custom lives explanation for legacy mode
-        this.updateCustomLivesExplanation();
-
-        // Update lives config with a small delay to ensure DOM is updated
-        setTimeout(() => this.updateLivesConfig(), 0);
-    }
-
-    handleLivesModeChange(event) {
-        const customLivesGroup = document.getElementById('custom-lives-group');
-        const livesExplanation = document.getElementById('lives-explanation');
-        
-        if (event.target.value === 'custom') {
-            customLivesGroup.style.display = 'block';
-            if (this.characterMode) {
-                livesExplanation.textContent = 'Configure custom lives per character below.';
-            } else {
-                livesExplanation.textContent = 'Configure your own lives and mission cycle settings below.';
-            }
-        } else {
-            customLivesGroup.style.display = 'none';
-            
-            if (event.target.value === 'default') {
-                if (this.characterMode) {
-                    livesExplanation.textContent = 'Each character starts with the specified number of lives. When they die, they are replaced with a new character.';
-                } else {
-                    livesExplanation.textContent = 'Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).';
-                }
-            } else if (event.target.value === 'permadeath') {
-                if (this.characterMode) {
-                    livesExplanation.textContent = 'Each character has only one life. When they die, they are replaced with a new character.';
-                } else {
-                    livesExplanation.textContent = 'Each player has only one life for the entire tour. Death marks them as KIA permanently.';
-                }
-            }
-        }
-        
-        this.updateCustomLivesExplanation();
-        this.updateLivesConfig();
-        this.savePreferences();
-    }
-
-    updateCustomLivesDisplay() {
-        const livesCount = document.getElementById('custom-lives-count')?.value || 2;
-        const missionCycle = document.getElementById('custom-mission-cycle')?.value || 3;
-        
-        document.getElementById('lives-display').textContent = livesCount;
-        document.getElementById('cycle-display').textContent = missionCycle;
-    }
-
-    updateCustomLivesExplanation() {
-        const livesDisplay = document.getElementById('lives-display');
-        const cycleDisplay = document.getElementById('cycle-display');
-        const explanationDiv = document.querySelector('.custom-lives-explanation');
-        
-        if (!explanationDiv) return;
-        
-        const livesCount = document.getElementById('custom-lives-count')?.value || (this.characterMode ? '3' : '2');
-        
-        if (this.characterMode) {
-            explanationDiv.innerHTML = `Each character starts with <span id="lives-display">${livesCount}</span> lives.`;
-        } else {
-            const missionCycle = document.getElementById('custom-mission-cycle')?.value || '3';
-            explanationDiv.innerHTML = `Players get <span id="lives-display">${livesCount}</span> lives every <span id="cycle-display">${missionCycle}</span> missions.`;
-        }
-    }
-
-    updateLivesConfig() {
-        const livesMode = document.getElementById('lives-mode')?.value || 'default';
-        
-        this.livesConfig.mode = livesMode;
-        
-        if (this.characterMode) {
-            // Character Mode: Lives are per-character, not per-cycle
-            if (livesMode === 'custom') {
-                this.livesConfig.livesPerCycle = parseInt(document.getElementById('custom-lives-count')?.value) || 3;
-            } else if (livesMode === 'default') {
-                this.livesConfig.livesPerCycle = 3; // Default 3 lives per character
-            } else if (livesMode === 'permadeath') {
-                this.livesConfig.livesPerCycle = 1; // 1 life per character
-            }
-            this.livesConfig.missionCycle = 999; // Never replenish in character mode
-        } else {
-            // Legacy Mode: Traditional lives per mission cycle
-            if (livesMode === 'custom') {
-                this.livesConfig.livesPerCycle = parseInt(document.getElementById('custom-lives-count')?.value) || 2;
-                this.livesConfig.missionCycle = parseInt(document.getElementById('custom-mission-cycle')?.value) || 3;
-            } else if (livesMode === 'default') {
-                this.livesConfig.livesPerCycle = 2;
-                this.livesConfig.missionCycle = 3;
-            } else if (livesMode === 'permadeath') {
-                this.livesConfig.livesPerCycle = 1;
-                this.livesConfig.missionCycle = 999; // Effectively never replenish
-            }
-        }
-    }
 
     initializeSquadMembers() {
         this.squadMembers = [];
@@ -746,106 +552,110 @@ class App {
             if (name) {
                 this.squadMembers.push({
                     name: name,
-                    lives: this.livesConfig.livesPerCycle,
-                    maxLives: this.livesConfig.livesPerCycle,
+                    kills: {
+                        total: 0,
+                        byFaction: {
+                            "Terminids": 0,
+                            "Automatons": 0,
+                            "Illuminate": 0
+                        }
+                    },
+                    samples: 0,
                     deaths: 0,
-                    isDead: false,
-                    missionsSinceLastReplenish: 0
+                    missionsCompleted: 0
                 });
             }
         }
         
-        console.log('Initialized squad members for Legacies mode:', this.squadMembers);
+        console.log('Initialized squad members for Stats mode:', this.squadMembers);
     }
 
-    updateSquadMemberLives(missionIndex) {
-        if (!this.legaciesMode || !this.squadMembers.length) return;
-        
-        // In character mode, lives are per-character and don't replenish
-        if (this.characterMode) return;
-        
-        // Replenish lives if we've completed a cycle
-        const cycleMissions = this.livesConfig.missionCycle;
-        
-        this.squadMembers.forEach(member => {
-            if (member.isDead) return; // Dead members don't get life replenishment
-            
-            member.missionsSinceLastReplenish++;
-            
-            if (member.missionsSinceLastReplenish >= cycleMissions) {
-                member.lives = member.maxLives; // Replenish to full (don't stack)
-                member.missionsSinceLastReplenish = 0;
-                console.log(`${member.name} lives replenished to ${member.lives}`);
-            }
-        });
-    }
 
-    handleConfirmCasualties() {
-        const deathInputs = document.querySelectorAll('#casualty-checkboxes input[type="number"]');
+    handleConfirmStats() {
+        const statsInputs = document.querySelectorAll('#stats-inputs-container .stats-input');
         const tour = this.currentTour;
-        const currentMission = tour.missions[tour.currentMissionIndex];
+        const currentOperation = tour.missions[tour.currentMissionIndex];
         
-        deathInputs.forEach(input => {
+        // Aggregate stats per squad member
+        const memberStats = {};
+        
+        statsInputs.forEach(input => {
             const memberIndex = parseInt(input.dataset.memberIndex);
-            let deathCount = parseInt(input.value) || 0;
-            const member = this.squadMembers[memberIndex];
+            const missionIndex = parseInt(input.dataset.missionIndex);
+            const statType = input.dataset.statType;
+            let value = parseInt(input.value) || 0;
             
-            // Validate death count
-            if (deathCount < 0) deathCount = 0;
-            if (deathCount > 50) deathCount = 50;
+            // Validate input values
+            if (statType === 'kills' && value < 0) value = 0;
+            if (statType === 'kills' && value > 9999) value = 9999;
+            if (statType === 'samples' && value < 0) value = 0;
+            if (statType === 'samples' && value > 999) value = 999;
+            if (statType === 'deaths' && value < 0) value = 0;
+            if (statType === 'deaths' && value > 50) value = 50;
             
-            if (member && !member.isDead && deathCount > 0) {
-                // Ensure we don't exceed maximum reasonable deaths that would cause negative lives
-                const maxDeathsAllowed = member.lives + 10; // Allow some buffer for multiple deaths
-                if (deathCount > maxDeathsAllowed) {
-                    console.warn(`Capping death count for ${member.name} from ${deathCount} to ${maxDeathsAllowed} (based on available lives)`);
-                    deathCount = maxDeathsAllowed;
+            if (!memberStats[memberIndex]) {
+                memberStats[memberIndex] = {
+                    kills: 0,
+                    samples: 0,
+                    deaths: 0
+                };
+            }
+            
+            memberStats[memberIndex][statType] += value;
+        });
+        
+        // Apply stats to squad members
+        Object.keys(memberStats).forEach(memberIndex => {
+            const member = this.squadMembers[parseInt(memberIndex)];
+            const stats = memberStats[memberIndex];
+            
+            if (member) {
+                // Update kills (total and by faction)
+                member.kills.total += stats.kills;
+                if (currentOperation.faction && stats.kills > 0) {
+                    member.kills.byFaction[currentOperation.faction] += stats.kills;
                 }
                 
-                // Add the death count from this mission to total deaths
-                member.deaths += deathCount;
-                member.lives -= deathCount;
+                // Update samples
+                member.samples += stats.samples;
                 
-                console.log(`${member.name} died ${deathCount} time${deathCount > 1 ? 's' : ''} this mission. Total deaths: ${member.deaths}, Lives remaining: ${member.lives}`);
-                
-                if (member.lives <= 0) {
-                    member.isDead = true;
-                    
-                    // In Character Mode, calculate additional character deaths
-                    let additionalCharacterDeaths = 0;
-                    if (this.characterMode && member.lives < 0) {
-                        // If lives are negative, that means extra characters died
-                        additionalCharacterDeaths = Math.abs(member.lives);
-                        member.lives = 0; // Set to 0 since they're dead
-                    }
-                    
-                    member.deathMission = {
-                        missionNumber: tour.currentMissionIndex + 1,
-                        name: currentMission.name,
-                        primaryObjective: currentMission.primaryObjective.name || currentMission.primaryObjective.description,
-                        difficulty: currentMission.difficulty,
-                        planet: currentMission.planet.name,
-                        faction: currentMission.faction,
-                        missionDeathCount: deathCount, // Store deaths from this specific mission
-                        additionalCharacterDeaths: additionalCharacterDeaths, // Additional characters that died this mission
-                        additionalCharacterNames: [], // Names of additional characters (to be filled later)
-                        additionalCharacterNotes: [], // Notes for additional characters (to be filled later)
-                        deathNote: '' // Will be filled in by death note dialog
-                    };
-                    // Add to pending death notes queue
-                    this.pendingDeathNotes.push(member);
-                    console.log(`${member.name} is marked as KIA on mission ${member.deathMission.missionNumber}: ${member.deathMission.name} (died ${deathCount} times in final mission, ${additionalCharacterDeaths} additional characters also died)`);
-                } else {
-                    // If they died but didn't go KIA, we might still want to track mission death counts
-                    console.log(`${member.name} survived despite ${deathCount} deaths this mission`);
+                // Update deaths
+                if (stats.deaths > 0) {
+                    member.deaths += stats.deaths;
+                    console.log(`${member.name} died ${stats.deaths} time${stats.deaths > 1 ? 's' : ''} this operation. Total deaths: ${member.deaths}`);
                 }
+                
+                // Update missions completed
+                member.missionsCompleted++;
+                
+                console.log(`Updated stats for ${member.name}:`, {
+                    kills: member.kills.total,
+                    samples: member.samples,
+                    deaths: member.deaths,
+                    missionsCompleted: member.missionsCompleted
+                });
             }
         });
         
-        this.hideDeathTrackingDialog();
+        this.hideStatsTrackingDialog();
         
-        // Show death note dialogs for players who died, then proceed
-        this.showNextDeathNoteDialog();
+        // Proceed to next mission
+        this.proceedToNextMission();
+    }
+
+    handleSkipStats() {
+        // Increment missions completed for all members
+        this.squadMembers.forEach(member => {
+            member.missionsCompleted++;
+        });
+        
+        this.hideStatsTrackingDialog();
+        this.proceedToNextMission();
+    }
+
+    // Legacy method for compatibility
+    handleConfirmCasualties() {
+        this.handleConfirmStats();
     }
 
     handleNoCasualties() {
@@ -853,388 +663,121 @@ class App {
         this.proceedToNextMission();
     }
 
-    showDeathTrackingDialog() {
-        if (!this.legaciesMode || !this.squadMembers.length) {
+    showStatsTrackingDialog() {
+        if (!this.statsMode || !this.squadMembers.length) {
             this.proceedToNextMission();
             return;
         }
 
-        const dialog = document.getElementById('death-tracking-dialog');
-        const checkboxContainer = document.getElementById('casualty-checkboxes');
+        const dialog = document.getElementById('stats-tracking-dialog');
+        const statsContainer = document.getElementById('stats-inputs-container');
         
-        // Clear existing checkboxes
-        checkboxContainer.innerHTML = '';
+        // Clear existing inputs
+        statsContainer.innerHTML = '';
         
-        // Create death counters for living squad members
-        const livingMembers = this.squadMembers.filter(member => !member.isDead);
-        
-        if (livingMembers.length === 0) {
-            // No living members, skip dialog
-            this.proceedToNextMission();
-            return;
-        }
-        
-        livingMembers.forEach((member, index) => {
-            const originalIndex = this.squadMembers.indexOf(member);
-            
-            const container = document.createElement('div');
-            container.className = 'casualty-counter';
-            
-            const label = document.createElement('div');
-            label.className = 'casualty-label';
-            label.textContent = `${member.name} (Lives: ${member.lives})`;
-            
-            const counterContainer = document.createElement('div');
-            counterContainer.className = 'death-counter-container';
-            
-            const decrementBtn = document.createElement('button');
-            decrementBtn.type = 'button';
-            decrementBtn.className = 'death-counter-btn decrement';
-            decrementBtn.textContent = '−';
-            decrementBtn.onclick = () => {
-                const input = counterContainer.querySelector('input');
-                const currentValue = parseInt(input.value) || 0;
-                if (currentValue > 0) {
-                    input.value = currentValue - 1;
-                }
-            };
-            
-            const deathInput = document.createElement('input');
-            deathInput.type = 'number';
-            deathInput.className = 'death-counter-input';
-            deathInput.id = `casualty-${originalIndex}`;
-            deathInput.value = '0';
-            deathInput.min = '0';
-            deathInput.max = '50';
-            deathInput.dataset.memberIndex = originalIndex;
-            
-            // Add validation to prevent invalid inputs
-            deathInput.addEventListener('input', (e) => {
-                let value = parseInt(e.target.value) || 0;
-                if (value < 0) value = 0;
-                if (value > 50) value = 50;
-                e.target.value = value;
-            });
-            
-            const incrementBtn = document.createElement('button');
-            incrementBtn.type = 'button';
-            incrementBtn.className = 'death-counter-btn increment';
-            incrementBtn.textContent = '+';
-            incrementBtn.onclick = () => {
-                const input = counterContainer.querySelector('input');
-                const currentValue = parseInt(input.value) || 0;
-                if (currentValue < 50) {
-                    input.value = currentValue + 1;
-                }
-            };
-            
-            const deathsLabel = document.createElement('span');
-            deathsLabel.className = 'deaths-label';
-            deathsLabel.textContent = 'deaths this mission';
-            
-            counterContainer.appendChild(decrementBtn);
-            counterContainer.appendChild(deathInput);
-            counterContainer.appendChild(incrementBtn);
-            
-            container.appendChild(label);
-            container.appendChild(counterContainer);
-            container.appendChild(deathsLabel);
-            
-            checkboxContainer.appendChild(container);
-        });
+        // Generate stats inputs for the current operation
+        this.generateStatsInputs(statsContainer);
         
         dialog.style.display = 'block';
     }
 
-    hideDeathTrackingDialog() {
-        const dialog = document.getElementById('death-tracking-dialog');
+    generateStatsInputs(container) {
+        const tour = this.currentTour;
+        const currentOperation = tour.missions[tour.currentMissionIndex];
+        
+        // Always allow 3 stat entries per player per operation
+        const operationMissions = 3;
+        
+        // Create stats input for each squad member
+        this.squadMembers.forEach((member, memberIndex) => {
+            // Create member section
+            const memberSection = document.createElement('div');
+            memberSection.className = 'member-stats-section';
+            
+            const memberHeader = document.createElement('h4');
+            memberHeader.className = 'member-stats-header';
+            memberHeader.textContent = member.name;
+            memberSection.appendChild(memberHeader);
+            
+            // Create stats inputs for each mission in the operation
+            for (let missionIndex = 0; missionIndex < operationMissions; missionIndex++) {
+                const missionDiv = document.createElement('div');
+                missionDiv.className = 'mission-stats';
+                
+                const missionHeader = document.createElement('h5');
+                missionHeader.className = 'mission-stats-header';
+                missionHeader.textContent = operationMissions > 1 ? `Mission ${missionIndex + 1}` : 'Operation Stats';
+                missionDiv.appendChild(missionHeader);
+                
+                const statsGrid = document.createElement('div');
+                statsGrid.className = 'stats-input-grid';
+                
+                // Kills input
+                const killsLabel = document.createElement('label');
+                killsLabel.textContent = 'Kills:';
+                const killsInput = document.createElement('input');
+                killsInput.type = 'number';
+                killsInput.className = 'stats-input kills-input';
+                killsInput.placeholder = '0';
+                killsInput.min = '0';
+                killsInput.max = '9999';
+                killsInput.dataset.memberIndex = memberIndex;
+                killsInput.dataset.missionIndex = missionIndex;
+                killsInput.dataset.statType = 'kills';
+                
+                // Samples input
+                const samplesLabel = document.createElement('label');
+                samplesLabel.textContent = 'Samples:';
+                const samplesInput = document.createElement('input');
+                samplesInput.type = 'number';
+                samplesInput.className = 'stats-input samples-input';
+                samplesInput.placeholder = '0';
+                samplesInput.min = '0';
+                samplesInput.max = '999';
+                samplesInput.dataset.memberIndex = memberIndex;
+                samplesInput.dataset.missionIndex = missionIndex;
+                samplesInput.dataset.statType = 'samples';
+                
+                // Deaths input
+                const deathsLabel = document.createElement('label');
+                deathsLabel.textContent = 'Deaths:';
+                const deathsInput = document.createElement('input');
+                deathsInput.type = 'number';
+                deathsInput.className = 'stats-input deaths-input';
+                deathsInput.placeholder = '0';
+                deathsInput.min = '0';
+                deathsInput.max = '50';
+                deathsInput.dataset.memberIndex = memberIndex;
+                deathsInput.dataset.missionIndex = missionIndex;
+                deathsInput.dataset.statType = 'deaths';
+                
+                // Add inputs to grid
+                statsGrid.appendChild(killsLabel);
+                statsGrid.appendChild(killsInput);
+                statsGrid.appendChild(samplesLabel);
+                statsGrid.appendChild(samplesInput);
+                statsGrid.appendChild(deathsLabel);
+                statsGrid.appendChild(deathsInput);
+                
+                missionDiv.appendChild(statsGrid);
+                memberSection.appendChild(missionDiv);
+            }
+            
+            container.appendChild(memberSection);
+        });
+    }
+
+    hideStatsTrackingDialog() {
+        const dialog = document.getElementById('stats-tracking-dialog');
         dialog.style.display = 'none';
     }
 
-    showNextDeathNoteDialog() {
-        if (this.pendingDeathNotes.length === 0) {
-            // No more death notes to show, proceed to next mission
-            this.proceedToNextMission();
-            return;
-        }
-
-        const member = this.pendingDeathNotes[0]; // Get the first member in queue
-        
-        // In character mode, show character replacement dialog instead
-        if (this.characterMode) {
-            this.showCharacterReplacementDialog(member);
-            return;
-        }
-
-        const modal = document.getElementById('death-note-modal');
-        const playerNameElement = document.getElementById('death-note-player-name');
-        const deathNoteInput = document.getElementById('death-note-input');
-        const deathNoteCount = document.getElementById('death-note-count');
-
-        // Set up the dialog for this player
-        playerNameElement.textContent = member.name;
-        deathNoteInput.value = '';
-        deathNoteCount.textContent = '0';
-        
-        // Show modal
-        modal.style.display = 'flex';
-        
-        // Focus on the textarea
-        setTimeout(() => deathNoteInput.focus(), 100);
+    // Legacy method for compatibility
+    hideDeathTrackingDialog() {
+        this.hideStatsTrackingDialog();
     }
 
-    showCharacterReplacementDialog(member) {
-        // Use a small delay to ensure DOM is fully ready
-        setTimeout(() => {
-            const modal = document.getElementById('character-replacement-modal');
-            const messageElement = document.getElementById('character-replacement-message');
-            const oldNameElement = document.getElementById('character-replacement-old-name');
-            const newNameInput = document.getElementById('character-replacement-input');
-            const deathNoteTextarea = document.getElementById('character-replacement-death-note');
-            const deathNoteCount = document.getElementById('character-replacement-death-count');
-            const additionalCharactersSection = document.getElementById('additional-characters-section');
-            const additionalCharacterInputs = document.getElementById('additional-character-inputs');
 
-            // Check if all required elements exist
-            if (!modal || !messageElement || !newNameInput || !deathNoteTextarea || !deathNoteCount) {
-                console.error('Character replacement dialog elements not found. Missing elements:', {
-                    modal: !!modal,
-                    messageElement: !!messageElement,
-                    oldNameElement: !!oldNameElement,
-                    newNameInput: !!newNameInput,
-                    deathNoteTextarea: !!deathNoteTextarea,
-                    deathNoteCount: !!deathNoteCount
-                });
-                // Skip this character and proceed to next if modal elements are missing
-                this.pendingDeathNotes.shift();
-                this.showNextDeathNoteDialog();
-                return;
-            }
-
-            this.showCharacterReplacementDialogInternal(member, {
-                modal,
-                messageElement,
-                oldNameElement,
-                newNameInput,
-                deathNoteTextarea,
-                deathNoteCount,
-                additionalCharactersSection,
-                additionalCharacterInputs
-            });
-        }, 10);
-    }
-
-    showCharacterReplacementDialogInternal(member, elements) {
-        const {
-            modal,
-            messageElement,
-            oldNameElement,
-            newNameInput,
-            deathNoteTextarea,
-            deathNoteCount,
-            additionalCharactersSection,
-            additionalCharacterInputs
-        } = elements;
-
-        // Set up the dialog for character replacement
-        if (newNameInput) newNameInput.value = '';
-        if (deathNoteTextarea) deathNoteTextarea.value = '';
-        if (deathNoteCount) deathNoteCount.textContent = '0';
-        
-        // Check if additional characters died this mission
-        const additionalDeaths = member.deathMission?.additionalCharacterDeaths || 0;
-        
-        if (additionalDeaths > 0 && additionalCharactersSection && additionalCharacterInputs) {
-            // Update message to show multiple deaths
-            messageElement.innerHTML = `<strong id="character-replacement-old-name">${member.name}</strong> and <strong>${additionalDeaths}</strong> other character${additionalDeaths > 1 ? 's' : ''} were KIA this mission.`;
-            
-            // Show additional characters section
-            additionalCharactersSection.style.display = 'block';
-            
-            // Generate input fields for additional character names
-            additionalCharacterInputs.innerHTML = '';
-            for (let i = 0; i < additionalDeaths; i++) {
-                const inputGroup = document.createElement('div');
-                inputGroup.className = 'additional-character-input-group';
-                inputGroup.style.marginBottom = '10px';
-                
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.id = `additional-character-name-${i}`;
-                nameInput.placeholder = `Additional character ${i + 1} name (leave blank for auto-generation)`;
-                nameInput.maxLength = 30;
-                nameInput.style.width = '100%';
-                nameInput.style.marginBottom = '5px';
-                
-                const noteToggle = document.createElement('button');
-                noteToggle.type = 'button';
-                noteToggle.className = 'note-toggle-btn';
-                noteToggle.textContent = 'Add Note';
-                noteToggle.style.fontSize = '12px';
-                noteToggle.style.padding = '2px 8px';
-                noteToggle.style.marginBottom = '5px';
-                noteToggle.onclick = () => this.toggleAdditionalCharacterNote(i);
-                
-                const noteTextarea = document.createElement('textarea');
-                noteTextarea.id = `additional-character-note-${i}`;
-                noteTextarea.placeholder = 'Optional death note...';
-                noteTextarea.maxLength = 200;
-                noteTextarea.rows = 2;
-                noteTextarea.style.width = '100%';
-                noteTextarea.style.display = 'none';
-                
-                inputGroup.appendChild(nameInput);
-                inputGroup.appendChild(noteToggle);
-                inputGroup.appendChild(noteTextarea);
-                additionalCharacterInputs.appendChild(inputGroup);
-            }
-        } else {
-            // Single character death
-            messageElement.innerHTML = `<strong id="character-replacement-old-name">${member.name}</strong> has fallen in battle.`;
-            if (additionalCharactersSection) {
-                additionalCharactersSection.style.display = 'none';
-            }
-        }
-        
-        // Show modal
-        if (modal) {
-            modal.style.display = 'flex';
-        }
-        
-        // Focus on the death note textarea first
-        if (deathNoteTextarea) {
-            setTimeout(() => deathNoteTextarea.focus(), 100);
-        }
-    }
-
-    toggleAdditionalCharacterNote(index) {
-        const noteTextarea = document.getElementById(`additional-character-note-${index}`);
-        const toggleBtn = document.querySelector(`#additional-character-inputs .additional-character-input-group:nth-child(${index + 1}) .note-toggle-btn`);
-        
-        if (!noteTextarea || !toggleBtn) {
-            console.error(`Additional character note elements not found for index ${index}`);
-            return;
-        }
-        
-        if (noteTextarea.style.display === 'none') {
-            noteTextarea.style.display = 'block';
-            toggleBtn.textContent = 'Hide Note';
-        } else {
-            noteTextarea.style.display = 'none';
-            toggleBtn.textContent = 'Add Note';
-        }
-    }
-
-    generateRandomHelldiverId() {
-        return Math.floor(10000 + Math.random() * 90000).toString();
-    }
-
-    handleDeathNoteOk() {
-        if (this.pendingDeathNotes.length === 0) return;
-
-        const member = this.pendingDeathNotes.shift(); // Remove first member from queue
-        const deathNoteInput = document.getElementById('death-note-input');
-        const deathNote = deathNoteInput.value.trim();
-
-        // Save the death note (even if empty)
-        if (member.deathMission) {
-            member.deathMission.deathNote = deathNote;
-        }
-
-        this.hideDeathNoteModal();
-        
-        // Show next death note dialog or proceed to next mission
-        this.showNextDeathNoteDialog();
-    }
-
-    handleCharacterReplacementOk() {
-        if (this.pendingDeathNotes.length === 0) return;
-
-        const deadMember = this.pendingDeathNotes.shift(); // Remove first member from queue
-        const newNameInput = document.getElementById('character-replacement-input');
-        const deathNoteTextarea = document.getElementById('character-replacement-death-note');
-        const newName = newNameInput.value.trim();
-        const deathNote = deathNoteTextarea.value.trim();
-
-        if (!newName) {
-            alert('Please enter a name for your new character.');
-            return;
-        }
-
-        // Save the death note to the death mission (similar to regular death note handling)
-        if (deadMember.deathMission) {
-            deadMember.deathMission.deathNote = deathNote;
-            
-            // Process additional character names and notes
-            const additionalDeaths = deadMember.deathMission.additionalCharacterDeaths || 0;
-            if (additionalDeaths > 0) {
-                deadMember.deathMission.additionalCharacterNames = [];
-                deadMember.deathMission.additionalCharacterNotes = [];
-                
-                for (let i = 0; i < additionalDeaths; i++) {
-                    const nameInput = document.getElementById(`additional-character-name-${i}`);
-                    const noteTextarea = document.getElementById(`additional-character-note-${i}`);
-                    
-                    let characterName = nameInput ? nameInput.value.trim() : '';
-                    if (!characterName) {
-                        // Generate random Helldiver ID if name is blank
-                        characterName = `Helldiver-${this.generateRandomHelldiverId()}`;
-                    }
-                    
-                    const characterNote = noteTextarea ? noteTextarea.value.trim() : '';
-                    
-                    deadMember.deathMission.additionalCharacterNames.push(characterName);
-                    deadMember.deathMission.additionalCharacterNotes.push(characterNote);
-                    
-                    // Also add these additional characters to character legacies
-                    this.characterLegacies.push({
-                        name: characterName,
-                        deaths: 1, // Each additional character died once
-                        deathMission: {
-                            ...deadMember.deathMission,
-                            deathNote: characterNote
-                        },
-                        missionsCompleted: this.currentTour ? this.currentTour.currentMissionIndex : 0
-                    });
-                }
-            }
-        }
-
-        // Archive the original dead character to character legacies
-        this.characterLegacies.push({
-            name: deadMember.name,
-            deaths: deadMember.deaths,
-            deathMission: deadMember.deathMission,
-            missionsCompleted: this.currentTour ? this.currentTour.currentMissionIndex : 0
-        });
-
-        // Replace the dead character with the new one
-        deadMember.name = newName;
-        // Ensure maxLives is set correctly from current configuration
-        if (!deadMember.maxLives || deadMember.maxLives <= 0) {
-            deadMember.maxLives = this.livesConfig.livesPerCycle;
-        }
-        deadMember.lives = deadMember.maxLives; // Reset lives for new character
-        deadMember.deaths = 0;
-        deadMember.isDead = false;
-        deadMember.missionsSinceLastReplenish = 0; // Reset mission counter for new character
-        delete deadMember.deathMission; // Clear death mission data for the new character
-
-        this.hideCharacterReplacementModal();
-        
-        // Show next death dialog or proceed to next mission
-        this.showNextDeathNoteDialog();
-    }
-
-    hideDeathNoteModal() {
-        const modal = document.getElementById('death-note-modal');
-        modal.style.display = 'none';
-    }
-
-    hideCharacterReplacementModal() {
-        const modal = document.getElementById('character-replacement-modal');
-        modal.style.display = 'none';
-    }
 
     proceedToNextMission() {
         const tour = this.currentTour;
@@ -1244,8 +787,6 @@ class App {
             // Tour completed!
             this.completeTour();
         } else {
-            // Update lives for next mission cycle
-            this.updateSquadMemberLives(tour.currentMissionIndex);
             
             // Show briefing for next mission
             this.displayNextMissionBriefing();
@@ -1282,6 +823,18 @@ class App {
             console.log('Starting campaign generation...');
             const preferences = this.getPreferences();
             console.log('User preferences:', preferences);
+            
+            // For themed campaigns (like Major Order), get the themed planets
+            if (preferences.tourTheme && preferences.tourTheme !== 'random') {
+                const gameData = await apiService.getAllGameData();
+                this.lastGameData = gameData; // Store for campaign builder
+                const campaignTheme = await this.selectCampaignTheme(gameData.planets, preferences);
+                
+                if (campaignTheme && campaignTheme.planets) {
+                    preferences.themedPlanets = campaignTheme.planets;
+                    console.log(`Using ${campaignTheme.planets.length} themed planets for ${campaignTheme.type} campaign`);
+                }
+            }
             
             const campaign = await campaignGenerator.generateCampaign(preferences);
             
@@ -1336,12 +889,8 @@ class App {
             biome: document.getElementById('biome-preference')?.value || 'random',
             missionType: document.getElementById('mission-type-preference')?.value || 'both',
             targetType: document.getElementById('target-type-preference')?.value || 'mixed',
-            legaciesMode: this.legaciesMode,
-            characterMode: this.characterMode,
+            statsMode: this.statsMode,
             squadMembers: squadMembers,
-            livesMode: document.getElementById('lives-mode')?.value || 'default',
-            customLivesCount: parseInt(document.getElementById('custom-lives-count')?.value) || 2,
-            customMissionCycle: parseInt(document.getElementById('custom-mission-cycle')?.value) || 3,
             // Tour preferences
             tourLength: document.getElementById('tour-length')?.value || 'regular',
             customTourLength: parseInt(document.getElementById('custom-tour-length-input')?.value) || 6,
@@ -1417,7 +966,7 @@ class App {
             <div class="mission-details">
                 <div class="detail-item">
                     <div class="detail-label">Operation Type</div>
-                    <div class="detail-value">${mission.isDefense ? 'Defense Mission' : 'Liberation Mission'}</div>
+                    <div class="detail-value">${mission.isDefense ? 'Defense Operation' : 'Liberation Operation'}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Location</div>
@@ -1449,16 +998,12 @@ class App {
                 </ul>
                 
                 ${mission.modifier ? `
-                <h4>Mission Modifier</h4>
+                <h4>Operation Modifier</h4>
                 <div class="mission-modifier">
                     <strong>${mission.modifier.name}:</strong> ${mission.modifier.description}
                 </div>
                 ` : ''}
                 
-            </div>
-            
-            <div class="mission-actions">
-                <button class="reroll-mission-btn" onclick="app.handleMissionReroll(${index})">Re-roll Mission</button>
             </div>
         `;
 
@@ -1504,10 +1049,18 @@ class App {
         return location;
     }
 
-    showLoading() {
+    showLoading(customMessage) {
         const loading = document.getElementById('loading');
         if (loading) {
             loading.style.display = 'block';
+            
+            // Update loading message if custom message is provided
+            if (customMessage) {
+                const loadingText = loading.querySelector('p');
+                if (loadingText) {
+                    loadingText.textContent = customMessage;
+                }
+            }
         }
         
         const campaignDisplay = document.getElementById('campaign-display');
@@ -1520,6 +1073,12 @@ class App {
         const loading = document.getElementById('loading');
         if (loading) {
             loading.style.display = 'none';
+            
+            // Restore default loading message
+            const loadingText = loading.querySelector('p');
+            if (loadingText) {
+                loadingText.textContent = 'Fetching live galactic war data...';
+            }
         }
     }
 
@@ -1571,21 +1130,13 @@ class App {
     applyPreferences() {
         // Apply saved preferences to form elements
         Object.keys(this.preferences).forEach(key => {
-            if (key === 'legaciesMode') {
-                this.legaciesMode = this.preferences[key] || false;
-                const checkbox = document.getElementById('legacies-mode-checkbox');
+            if (key === 'statsMode') {
+                this.statsMode = this.preferences[key] || false;
+                const checkbox = document.getElementById('stats-mode-checkbox');
                 if (checkbox) {
-                    checkbox.checked = this.legaciesMode;
+                    checkbox.checked = this.statsMode;
                     // Trigger the toggle to show/hide related elements
-                    this.handleLegaciesModeToggle({ target: checkbox });
-                }
-            } else if (key === 'characterMode') {
-                this.characterMode = this.preferences[key] || false;
-                const checkbox = document.getElementById('character-mode-checkbox');
-                if (checkbox) {
-                    checkbox.checked = this.characterMode;
-                    // Trigger the toggle to update UI elements
-                    this.handleCharacterModeToggle({ target: checkbox });
+                    this.handleStatsModeToggle({ target: checkbox });
                 }
             } else if (key === 'squadMembers') {
                 const names = this.preferences[key] || [];
@@ -1594,22 +1145,6 @@ class App {
                     if (input) {
                         input.value = names[i] || '';
                     }
-                }
-            } else if (key === 'livesMode') {
-                const element = document.getElementById('lives-mode');
-                if (element && this.preferences[key]) {
-                    element.value = this.preferences[key];
-                    this.handleLivesModeChange({ target: element });
-                }
-            } else if (key === 'customLivesCount') {
-                const element = document.getElementById('custom-lives-count');
-                if (element && this.preferences[key]) {
-                    element.value = this.preferences[key];
-                }
-            } else if (key === 'customMissionCycle') {
-                const element = document.getElementById('custom-mission-cycle');
-                if (element && this.preferences[key]) {
-                    element.value = this.preferences[key];
                 }
             } else if (key === 'customTourLength') {
                 const element = document.getElementById('custom-tour-length-input');
@@ -1643,9 +1178,6 @@ class App {
             }
         });
 
-        // Update custom lives display after loading preferences
-        this.updateCustomLivesDisplay();
-        this.updateLivesConfig();
     }
 
     // Initialize preferences when DOM is ready
@@ -1773,15 +1305,14 @@ class App {
         // Reset tour-specific state
         this.selectedMissionType = null;
         
-        // Initialize squad members if Legacies mode is enabled
-        if (this.legaciesMode) {
-            // Ensure lives config is up to date before initializing squad members
-            this.updateLivesConfig();
+        // Initialize squad members if Stats mode is enabled
+        if (this.statsMode) {
             this.initializeSquadMembers();
         }
         
         // Get live game data
         const gameData = await apiService.getAllGameData();
+        this.lastGameData = gameData; // Store for campaign builder
         const planets = gameData.planets;
         
         if (!planets || planets.length === 0) {
@@ -1789,7 +1320,7 @@ class App {
         }
 
         // Select campaign theme based on user preference
-        const campaignTheme = this.selectCampaignTheme(planets, preferences);
+        const campaignTheme = await this.selectCampaignTheme(planets, preferences);
         console.log('Selected campaign theme:', campaignTheme);
 
         // Determine tour length based on theme
@@ -1830,9 +1361,27 @@ class App {
         return tour;
     }
 
-    selectCampaignTheme(planets, preferences) {
+    async selectCampaignTheme(planets, preferences) {
         const enemyPlanets = apiService.getEnemyPlanets(planets);
         const availableFactions = apiService.getAvailableFactions(enemyPlanets);
+        
+        // Handle Major Order theme first
+        if (preferences.tourTheme === 'major_order') {
+            const majorOrderDetails = await apiService.getMajorOrderDetails();
+            const majorOrderPlanets = await apiService.getMajorOrderPlanets();
+            
+            if (majorOrderDetails && majorOrderPlanets.length > 0) {
+                return {
+                    type: 'major_order',
+                    name: 'Major Order Campaign',
+                    majorOrderDetails: majorOrderDetails,
+                    planets: majorOrderPlanets,
+                    weight: 100
+                };
+            } else {
+                throw new Error('Major Order theme is not currently available. No active Major Order or no eligible planets found. Please select a different theme.');
+            }
+        }
         
         // Filter planets by faction preference if specified
         let filteredPlanets = enemyPlanets;
@@ -1915,6 +1464,7 @@ class App {
             } else {
                 // Theme not available, throw an error to inform user
                 const themeNames = {
+                    'major_order': 'Major Order',
                     'single_planet': 'Single Planet Conquest',
                     'sector_campaign': 'Sector Campaign', 
                     'faction_focused': 'Faction Focus',
@@ -2014,14 +1564,14 @@ class App {
                 }
             }
             // Fallback to regular if custom input is invalid
-            return 6;
+            return 5;
         }
 
         const tourLengths = {
-            'quick': { min: 2, max: 3 },
-            'short': { min: 4, max: 5 },
-            'regular': { min: 6, max: 8 },
-            'long': { min: 8, max: 10 },
+            'quick': { min: 1, max: 1 },
+            'short': { min: 2, max: 3 },
+            'regular': { min: 4, max: 6 },
+            'long': { min: 7, max: 9 },
             'legendary': { min: 10, max: 12 }
         };
 
@@ -2135,6 +1685,10 @@ class App {
 
     selectThemedPlanets(availablePlanets, campaignTheme, tourLength, preferences) {
         switch (campaignTheme.type) {
+            case 'major_order':
+                // Use Major Order planets (already sorted by player count)
+                return campaignTheme.planets || [];
+                
             case 'single_planet':
                 // Pick one planet for all missions (varying between planet/city)
                 let singlePlanet;
@@ -2341,46 +1895,52 @@ class App {
 
     generateThemedTourName(campaignTheme) {
         const themeNames = {
+            'major_order': [
+                'Major Order: Priority Objectives',
+                'Major Order: Strategic Deployment',
+                'Major Order: Critical Operations',
+                'Major Order: Command Directive'
+            ],
             'single_planet': [
                 'Operation: Planetary Conquest',
                 'Campaign: World Cleansing', 
-                'Mission: Total Liberation',
+                'Operation: Total Liberation',
                 'Operation: Planetary Domination'
             ],
             'sector_campaign': [
                 'Operation: Sector Liberation',
                 'Campaign: Regional Control',
-                'Mission: Sector Cleansing',
+                'Operation: Sector Cleansing',
                 'Operation: Zone Domination'
             ],
             'faction_focused': [
                 'Operation: Species Elimination',
                 'Campaign: Faction Purge',
-                'Mission: Enemy Eradication',
+                'Operation: Enemy Eradication',
                 'Operation: Threat Neutralization'
             ],
             'mission_type_themed': [
                 'Operation: Strategic Objectives',
                 'Campaign: Tactical Supremacy',
-                'Mission: Military Excellence',
+                'Operation: Military Excellence',
                 'Operation: Combat Mastery'
             ],
             'biome_specific': [
                 'Operation: Environmental Adaptation',
                 'Campaign: Terrain Mastery',
-                'Mission: Climate Conquest',
+                'Operation: Climate Conquest',
                 'Operation: Biome Domination'
             ],
             'biome_group_themed': [
                 'Operation: Environmental Mastery',
                 'Campaign: Biome Conquest',
-                'Mission: Terrain Domination',
+                'Operation: Terrain Domination',
                 'Operation: Climate Warfare'
             ],
             'liberation_defense': [
                 'Operation: War Front',
                 'Campaign: Battle Lines',
-                'Mission: Front Defense',
+                'Operation: Front Defense',
                 'Operation: Strategic Warfare'
             ]
         };
@@ -2463,6 +2023,11 @@ class App {
         const campaignTheme = tour.theme;
         
         const themeBriefings = {
+            'major_order': [
+                `Helldiver. High Command has issued a Major Order: "${campaignTheme.majorOrderDetails?.title || 'Priority Objectives'}". ${campaignTheme.majorOrderDetails?.briefing || 'Your Tour of War directly supports the current community-wide objectives. Every mission you complete brings Super Earth closer to achieving this critical goal.'}`,
+                `The Ministry of Defense requires immediate action on the current Major Order. Your tour will focus on high-priority targets across ${tour.missions.length} critical operations. The entire Helldiver corps is mobilizing for this objective - you are part of something greater.`,
+                `Major Order received, Helldiver. Your Tour of War aligns with Super Earth's most urgent strategic needs. ${campaignTheme.planets?.length > 0 ? `Operations span ${campaignTheme.planets.length} priority target${campaignTheme.planets.length !== 1 ? 's' : ''}, with heaviest enemy presence on ${campaignTheme.planets[0].name}.` : 'Multiple priority targets await your attention.'} Democracy demands immediate action.`
+            ],
             'single_planet': [
                 `Helldiver. Your tour focuses entirely on ${mission.planet.name}. This world has become a festering wound in Democracy's flesh, and you will be the surgical blade that excises the ${factionName} infection. Multiple operations across both planetary surface and urban centers will demonstrate the thoroughness of Managed Democracy and weaken the invaders grip on this world.`,
                 `The Ministry of Defense has identified ${mission.planet.name} as a critical strategic target. Your Tour of War will systematically dismantle every ${factionName} stronghold on this world, from wilderness outposts to any metropolitan centers. Your success will allow SEAF to establish a foothold here.`,
@@ -2513,9 +2078,34 @@ class App {
         this.displayCurrentTourMission();
     }
 
-    displayCurrentTourMission() {
+    async displayCurrentTourMission() {
         const tour = this.currentTour;
         const mission = tour.missions[tour.currentMissionIndex];
+        
+        console.log(`Displaying mission ${tour.currentMissionIndex + 1}:`, mission);
+        
+        // Validate mission structure for imported tours
+        if (!mission) {
+            console.error('Mission is null or undefined');
+            return;
+        }
+        
+        // Check required mission properties
+        const requiredProps = ['name', 'planet', 'difficulty', 'faction'];
+        const missingProps = requiredProps.filter(prop => !mission[prop]);
+        if (missingProps.length > 0) {
+            console.error('Missing mission properties:', missingProps, mission);
+        }
+        
+        // Check if this mission needs regeneration due to war state changes
+        if (mission.needsRegeneration && mission.isImported) {
+            await this.regenerateImportedMission(mission);
+        }
+        
+        // Enhance imported mission data if it's missing required properties
+        if (mission.isCustom && !mission.primaryObjective) {
+            this.enhanceImportedMission(mission, tour.currentMissionIndex);
+        }
         
         // Update tour info
         document.getElementById('tour-name').textContent = tour.name;
@@ -2530,14 +2120,199 @@ class App {
         container.appendChild(missionCard);
         
         // Show action buttons
-        document.getElementById('mission-complete').style.display = 'inline-block';
-        document.getElementById('mission-failed').style.display = 'inline-block';
+        const missionCompleteBtn = document.getElementById('mission-complete');
+        const missionFailedBtn = document.getElementById('mission-failed');
+        
+        if (missionCompleteBtn && missionFailedBtn) {
+            missionCompleteBtn.style.display = 'inline-block';
+            missionFailedBtn.style.display = 'inline-block';
+            console.log('Mission action buttons made visible');
+        } else {
+            console.error('Mission action buttons not found:', { missionCompleteBtn, missionFailedBtn });
+        }
+        
+        // Show/hide campaign export button based on whether this is an imported campaign
+        const exportCampaignBtn = document.getElementById('export-campaign-from-tour');
+        if (exportCampaignBtn) {
+            if (this.currentTour.metadata?.isImportedCampaign) {
+                exportCampaignBtn.style.display = 'inline-block';
+            } else {
+                exportCampaignBtn.style.display = 'none';
+            }
+        }
+    }
+
+    enhanceImportedMission(mission, missionIndex) {
+        console.log('Enhancing imported mission data:', mission);
+        
+        // Add mission number
+        mission.number = `${missionIndex + 1}`;
+        
+        // Add missing planet properties if not present
+        if (mission.planet && !mission.planet.biome) {
+            mission.planet.biome = 'Unknown';
+            mission.planet.hazard = 'Unknown';
+            mission.planet.sector = mission.planet.sector || 'Unknown Sector';
+        }
+        
+        // Add default objectives if missing
+        if (!mission.primaryObjective) {
+            mission.primaryObjective = {
+                name: 'Liberation Operation',
+                description: 'Eliminate enemy presence and secure the area for Democratic forces.'
+            };
+        }
+        
+        if (!mission.secondaryObjectives) {
+            mission.secondaryObjectives = [
+                { description: 'Minimize civilian casualties' },
+                { description: 'Collect strategic samples' }
+            ];
+        }
+        
+        // Set defense flag (assume liberation by default)
+        if (mission.isDefense === undefined) {
+            mission.isDefense = false;
+        }
+        
+        // Add modifier if specified in briefing
+        if (mission.briefing && !mission.modifier) {
+            // Extract any modifier information from briefing if possible
+            mission.modifier = null; // Default to no modifier
+        }
+        
+        console.log('Enhanced mission:', mission);
+    }
+
+    updateStatsModeUI() {
+        console.log('Updating stats mode UI, statsMode:', this.statsMode, 'squadMembers:', this.squadMembers);
+        
+        // If stats mode is enabled, make sure UI elements are properly configured
+        if (this.statsMode) {
+            const status = document.getElementById('stats-mode-status');
+            const checkbox = document.getElementById('stats-mode-checkbox');
+            const squadNamesGroup = document.getElementById('squad-names-group');
+            
+            if (status) {
+                status.textContent = 'ON';
+                status.classList.add('active');
+            }
+            
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+            
+            if (squadNamesGroup) {
+                squadNamesGroup.style.display = 'block';
+            }
+            
+            // Initialize squad members if they don't exist
+            if (!this.squadMembers || this.squadMembers.length === 0) {
+                this.initializeSquadMembers();
+            }
+            
+            console.log('Stats mode UI updated successfully');
+        }
+    }
+
+    async showSquadNameEntryDialog() {
+        return new Promise((resolve) => {
+            const dialog = document.createElement('div');
+            dialog.className = 'squad-name-dialog';
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            const dialogContent = document.createElement('div');
+            dialogContent.style.cssText = `
+                background: #1a1a1a;
+                border: 2px solid #ff6b6b;
+                border-radius: 8px;
+                padding: 2rem;
+                max-width: 500px;
+                width: 90%;
+                color: white;
+            `;
+            
+            dialogContent.innerHTML = `
+                <h3 style="color: #ff6b6b; margin-bottom: 1rem;">Squad Member Names</h3>
+                <p style="margin-bottom: 1.5rem; color: #cccccc;">Enter the names of your squad members (up to 4). Leave blank for any unused slots:</p>
+                
+                <div style="display: grid; gap: 0.5rem; margin-bottom: 1.5rem;">
+                    <input type="text" id="dialog-squad-member-1" placeholder="Squad Member 1" style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: white;">
+                    <input type="text" id="dialog-squad-member-2" placeholder="Squad Member 2" style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: white;">
+                    <input type="text" id="dialog-squad-member-3" placeholder="Squad Member 3" style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: white;">
+                    <input type="text" id="dialog-squad-member-4" placeholder="Squad Member 4" style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: white;">
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button id="dialog-cancel" style="padding: 0.5rem 1rem; background: #666; border: none; border-radius: 4px; color: white; cursor: pointer;">Skip Stats</button>
+                    <button id="dialog-confirm" style="padding: 0.5rem 1rem; background: #ff6b6b; border: none; border-radius: 4px; color: white; cursor: pointer;">Confirm</button>
+                </div>
+            `;
+            
+            dialog.appendChild(dialogContent);
+            document.body.appendChild(dialog);
+            
+            // Focus first input
+            setTimeout(() => {
+                const firstInput = document.getElementById('dialog-squad-member-1');
+                if (firstInput) firstInput.focus();
+            }, 100);
+            
+            // Handle confirm
+            const confirmBtn = document.getElementById('dialog-confirm');
+            const cancelBtn = document.getElementById('dialog-cancel');
+            
+            const handleConfirm = () => {
+                const names = [];
+                for (let i = 1; i <= 4; i++) {
+                    const input = document.getElementById(`dialog-squad-member-${i}`);
+                    if (input && input.value.trim()) {
+                        names.push(input.value.trim());
+                    }
+                }
+                document.body.removeChild(dialog);
+                resolve(names);
+            };
+            
+            const handleCancel = () => {
+                document.body.removeChild(dialog);
+                resolve([]);
+            };
+            
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            
+            // Handle Enter key
+            dialogContent.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleConfirm();
+                }
+            });
+            
+            // Handle Escape key
+            dialog.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel();
+                }
+            });
+        });
     }
 
     handleMissionComplete() {
-        // In Legacies mode, show death tracking dialog first
-        if (this.legaciesMode && this.squadMembers.length > 0) {
-            this.showDeathTrackingDialog();
+        // In Stats mode, show stats tracking dialog first
+        if (this.statsMode && this.squadMembers.length > 0) {
+            this.showStatsTrackingDialog();
         } else {
             // Normal tour mode - proceed directly
             this.proceedToNextMission();
@@ -2616,10 +2391,10 @@ class App {
         // Show appropriate completion screen
         document.getElementById('current-mission-display').style.display = 'none';
         
-        if (this.legaciesMode && this.squadMembers.length > 0) {
-            // Show Legacies completion screen
-            document.getElementById('legacies-completion').style.display = 'block';
-            this.updateLegaciesCompletionScreen(tour);
+        if (this.statsMode && this.squadMembers.length > 0) {
+            // Show Stats completion screen
+            document.getElementById('stats-completion').style.display = 'block';
+            this.updateStatsCompletionScreen(tour);
         } else {
             // Show normal completion screen
             document.getElementById('tour-completion').style.display = 'block';
@@ -2632,204 +2407,264 @@ class App {
         
         const stats = document.getElementById('completion-stats');
         stats.innerHTML = `
-            <p><strong>Missions Completed:</strong> ${tour.missions.length}</p>
+            <p><strong>Operations Completed:</strong> ${tour.missions.length}</p>
             <p><strong>Factions Defeated:</strong> ${[...new Set(tour.missions.map(m => m.faction))].join(', ')}</p>
             <p><strong>Average Difficulty:</strong> ${(tour.missions.reduce((sum, m) => sum + m.difficulty.level, 0) / tour.missions.length).toFixed(1)}</p>
         `;
     }
 
-    updateLegaciesCompletionScreen(tour) {
-        document.getElementById('legacies-completed-tour-name').textContent = tour.name;
-        
-        const stats = document.getElementById('legacies-completion-stats');
-        stats.innerHTML = `
-            <p><strong>Missions Completed:</strong> ${tour.missions.length}</p>
-            <p><strong>Factions Defeated:</strong> ${[...new Set(tour.missions.map(m => m.faction))].join(', ')}</p>
-            <p><strong>Average Difficulty:</strong> ${(tour.missions.reduce((sum, m) => sum + m.difficulty.level, 0) / tour.missions.length).toFixed(1)}</p>
-        `;
-
-        if (this.characterMode) {
-            this.updateCharacterModeCompletionScreen(tour);
-        } else {
-            this.updateLegacyModeCompletionScreen(tour);
-        }
+    // Helper function to format numbers with commas
+    formatNumber(num) {
+        return num.toLocaleString();
     }
 
-    updateCharacterModeCompletionScreen(tour) {
-        // Update survivors section with character-specific title
-        const survivorsSection = document.querySelector('#survivors-section h3');
-        if (survivorsSection) {
-            survivorsSection.textContent = 'Surviving Characters';
-        }
-
-        const survivorsList = document.getElementById('survivors-list');
-        const survivors = this.squadMembers.filter(member => !member.isDead);
+    updateStatsCompletionScreen(tour) {
+        document.getElementById('stats-completed-tour-name').textContent = tour.name;
         
-        if (survivors.length > 0) {
-            survivorsList.innerHTML = survivors.map(member => 
-                `<div class="survivor-entry">${member.name} (${member.lives} lives remaining)</div>`
-            ).join('');
-        } else {
-            survivorsList.innerHTML = '<div class="no-survivors">No surviving characters - All fallen in battle</div>';
-        }
-
-        // Update KIA section with character legacies
-        const kiaSection = document.getElementById('kia-section');
-        const kiaTitle = document.querySelector('#kia-section h3');
-        if (kiaTitle) {
-            kiaTitle.textContent = 'Characters Fallen in Battle';
-        }
-
-        const kiaList = document.getElementById('kia-list');
+        // Calculate aggregate stats
+        const aggregateStats = {
+            totalKills: 0,
+            totalSamples: 0,
+            totalDeaths: 0,
+            totalMissions: 0,
+            factionKills: {
+                "Terminids": 0,
+                "Automatons": 0,
+                "Illuminate": 0
+            }
+        };
         
-        if (this.characterLegacies.length > 0) {
-            kiaSection.style.display = 'block';
+        // Sum up all squad member stats
+        this.squadMembers.forEach(member => {
+            aggregateStats.totalKills += member.kills.total;
+            aggregateStats.totalSamples += member.samples;
+            aggregateStats.totalDeaths += member.deaths;
+            aggregateStats.totalMissions += member.missionsCompleted;
             
-            // Group characters by mission for better organization
-            const charactersGroupedByMission = {};
-            this.characterLegacies.forEach(character => {
-                const missionKey = character.deathMission ? 
-                    `${character.deathMission.missionNumber}-${character.deathMission.name}` : 
-                    'unknown';
-                
-                if (!charactersGroupedByMission[missionKey]) {
-                    charactersGroupedByMission[missionKey] = [];
-                }
-                charactersGroupedByMission[missionKey].push(character);
+            // Add faction kills
+            Object.keys(member.kills.byFaction).forEach(faction => {
+                aggregateStats.factionKills[faction] += member.kills.byFaction[faction];
             });
+        });
+
+        const stats = document.getElementById('stats-completion-stats');
+        let statsHTML = `
+            <div class="completion-overview">
+                <h3>📊 Tour of War Complete</h3>
+                <div class="basic-stats">
+                    <p><strong>Operations Completed:</strong> ${tour.missions.length}</p>
+                    <p><strong>Factions Defeated:</strong> ${[...new Set(tour.missions.map(m => m.faction))].join(', ')}</p>
+                    <p><strong>Average Difficulty:</strong> ${(tour.missions.reduce((sum, m) => sum + m.difficulty.level, 0) / tour.missions.length).toFixed(1)}</p>
+                </div>
+            </div>
             
-            let kiaHTML = '';
-            
-            Object.entries(charactersGroupedByMission).forEach(([missionKey, characters]) => {
-                if (missionKey === 'unknown') {
-                    // Handle characters without death mission data
-                    characters.forEach(character => {
-                        kiaHTML += `<div class="kia-entry">
-                            <div class="kia-name">${character.name} (KIA after ${character.missionsCompleted} missions)</div>
-                        </div>`;
-                    });
-                    return;
-                }
-                
-                const firstCharacter = characters[0];
-                const mission = firstCharacter.deathMission;
-                
-                if (characters.length === 1) {
-                    // Single character death - use existing format
-                    let entryHTML = `<div class="kia-entry">
-                        <div class="kia-name">${firstCharacter.name} (KIA after ${firstCharacter.missionsCompleted} missions)</div>`;
-                    
-                    entryHTML += `<div class="kia-details">
-                        <strong>Final Mission:</strong> ${mission.name}<br>
-                        <strong>Objective:</strong> ${mission.primaryObjective}<br>
-                        <strong>Planet:</strong> ${mission.planet} vs ${mission.faction}<br>
-                        <strong>Difficulty:</strong> Level ${mission.difficulty.level} - ${mission.difficulty.name}`;
-                    
-                    // Add mission death count if available
-                    if (mission.missionDeathCount && mission.missionDeathCount > 1) {
-                        entryHTML += `<br><strong>Deaths in Final Mission:</strong> ${mission.missionDeathCount}`;
-                    }
-                    
-                    // Add death note if it exists
-                    if (mission.deathNote && mission.deathNote.trim() !== '') {
-                        entryHTML += `<br><strong>Final Moments:</strong> <em>${mission.deathNote}</em>`;
-                    }
-                    
-                    entryHTML += '</div></div>';
-                    kiaHTML += entryHTML;
-                } else {
-                    // Multiple character deaths in same mission - group them
-                    let entryHTML = `<div class="kia-entry kia-multiple-deaths">
-                        <div class="kia-mission-header">
-                            <strong>Mission ${mission.missionNumber}: ${mission.name}</strong><br>
-                            <em>${characters.length} characters KIA</em>
+            <div class="team-statistics">
+                <h3>🎯 Overall Team Statistics</h3>
+                <div class="team-stats-grid">
+                    <div class="stat-card kills-card">
+                        <div class="stat-icon">⚔️</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${this.formatNumber(aggregateStats.totalKills)}</div>
+                            <div class="stat-label">Total Kills</div>
                         </div>
-                        <div class="kia-details">
-                            <strong>Objective:</strong> ${mission.primaryObjective}<br>
-                            <strong>Planet:</strong> ${mission.planet} vs ${mission.faction}<br>
-                            <strong>Difficulty:</strong> Level ${mission.difficulty.level} - ${mission.difficulty.name}<br>
-                            <strong>Characters Lost:</strong><br>
-                            <div class="multiple-characters-list">`;
-                    
-                    characters.forEach(character => {
-                        entryHTML += `<div class="character-death-entry">
-                            • <strong>${character.name}</strong> (after ${character.missionsCompleted} missions)`;
-                        if (character.deathMission.deathNote && character.deathMission.deathNote.trim() !== '') {
-                            entryHTML += `<br>  <em>"${character.deathMission.deathNote}"</em>`;
-                        }
-                        entryHTML += `</div>`;
-                    });
-                    
-                    entryHTML += '</div></div></div>';
-                    kiaHTML += entryHTML;
-                }
+                    </div>
+                    <div class="stat-card samples-card">
+                        <div class="stat-icon">💎</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${this.formatNumber(aggregateStats.totalSamples)}</div>
+                            <div class="stat-label">Samples Collected</div>
+                        </div>
+                    </div>
+                    <div class="stat-card deaths-card">
+                        <div class="stat-icon">💀</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${this.formatNumber(aggregateStats.totalDeaths)}</div>
+                            <div class="stat-label">Total Deaths</div>
+                        </div>
+                    </div>
+                    <div class="stat-card operations-card">
+                        <div class="stat-icon">🎖️</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${tour.missions.length}</div>
+                            <div class="stat-label">Operations</div>
+                        </div>
+                    </div>
+                </div>`;
+
+        // Show faction-specific kills if any
+        const activeFactions = Object.keys(aggregateStats.factionKills).filter(faction => aggregateStats.factionKills[faction] > 0);
+        if (activeFactions.length > 0) {
+            statsHTML += '<div class="faction-breakdown"><h4>Kills by Faction</h4><div class="faction-stats">';
+            activeFactions.forEach(faction => {
+                const factionIcon = faction === 'Terminids' ? '🐛' : faction === 'Automatons' ? '🤖' : '🦑';
+                statsHTML += `<div class="faction-stat">
+                    <span class="faction-icon">${factionIcon}</span>
+                    <span class="faction-name">${faction}:</span>
+                    <span class="faction-kills">${this.formatNumber(aggregateStats.factionKills[faction])}</span>
+                </div>`;
             });
-            
-            kiaList.innerHTML = kiaHTML;
-        } else {
-            kiaSection.style.display = 'none';
+            statsHTML += '</div></div>';
         }
+        
+        statsHTML += '</div>';
+
+        // Generate Leaderboards
+        statsHTML += this.generateLeaderboards();
+
+        // Generate Per-Player Summaries
+        statsHTML += this.generatePerPlayerSummaries();
+        
+        stats.innerHTML = statsHTML;
+
+        this.updateDetailedStatsCompletionScreen(tour);
     }
 
-    updateLegacyModeCompletionScreen(tour) {
-        // Reset section titles to original
-        const survivorsSection = document.querySelector('#survivors-section h3');
-        if (survivorsSection) {
-            survivorsSection.textContent = 'Surviving Helldivers';
-        }
+    generateLeaderboards() {
+        if (this.squadMembers.length === 0) return '';
 
-        const kiaTitle = document.querySelector('#kia-section h3');
-        if (kiaTitle) {
-            kiaTitle.textContent = 'Helldivers KIA';
-        }
-
-        // Update survivors list
-        const survivorsList = document.getElementById('survivors-list');
-        const survivors = this.squadMembers.filter(member => !member.isDead);
+        // Calculate leaderboard data
+        const topKiller = [...this.squadMembers].sort((a, b) => b.kills.total - a.kills.total)[0];
+        const sampleHunter = [...this.squadMembers].sort((a, b) => b.samples - a.samples)[0];
         
-        if (survivors.length > 0) {
-            survivorsList.innerHTML = survivors.map(member => 
-                `<div class="survivor-entry">${member.name}</div>`
-            ).join('');
-        } else {
-            survivorsList.innerHTML = '<div class="no-survivors">No survivors - All Helldivers KIA</div>';
+        // Most durable: fewest deaths among players who completed multiple operations
+        const eligibleForDurable = this.squadMembers.filter(member => member.missionsCompleted > 1);
+        const mostDurable = eligibleForDurable.length > 0 ? 
+            [...eligibleForDurable].sort((a, b) => a.deaths - b.deaths)[0] : null;
+        
+        // Overall MVP: kills + samples - deaths (weighted formula)
+        const mvp = [...this.squadMembers].sort((a, b) => {
+            const scoreA = a.kills.total + a.samples - (a.deaths * 2);
+            const scoreB = b.kills.total + b.samples - (b.deaths * 2);
+            return scoreB - scoreA;
+        })[0];
+
+        let leaderboardHTML = `
+            <div class="leaderboards">
+                <h3>🏆 Leaderboards</h3>
+                <div class="leaderboard-grid">
+                    <div class="leaderboard-card top-killer">
+                        <div class="leaderboard-icon">🔥</div>
+                        <div class="leaderboard-title">Top Killer</div>
+                        <div class="leaderboard-player">${topKiller.name}</div>
+                        <div class="leaderboard-value">${this.formatNumber(topKiller.kills.total)} kills</div>
+                        <div class="leaderboard-status">✅ Helldiver</div>
+                    </div>
+                    
+                    <div class="leaderboard-card sample-hunter">
+                        <div class="leaderboard-icon">💎</div>
+                        <div class="leaderboard-title">Sample Hunter</div>
+                        <div class="leaderboard-player">${sampleHunter.name}</div>
+                        <div class="leaderboard-value">${this.formatNumber(sampleHunter.samples)} samples</div>
+                        <div class="leaderboard-status">✅ Helldiver</div>
+                    </div>`;
+
+        if (mostDurable) {
+            leaderboardHTML += `
+                    <div class="leaderboard-card most-durable">
+                        <div class="leaderboard-icon">🛡️</div>
+                        <div class="leaderboard-title">Most Durable</div>
+                        <div class="leaderboard-player">${mostDurable.name}</div>
+                        <div class="leaderboard-value">${mostDurable.deaths} deaths</div>
+                        <div class="leaderboard-status">✅ Helldiver</div>
+                    </div>`;
         }
 
-        // Update KIA list
-        const kiaList = document.getElementById('kia-list');
+        leaderboardHTML += `
+                    <div class="leaderboard-card overall-mvp">
+                        <div class="leaderboard-icon">🌟</div>
+                        <div class="leaderboard-title">Overall MVP</div>
+                        <div class="leaderboard-player">${mvp.name}</div>
+                        <div class="leaderboard-value">${this.formatNumber(mvp.kills.total + mvp.samples - (mvp.deaths * 2))} score</div>
+                        <div class="leaderboard-status">✅ Helldiver</div>
+                    </div>
+                </div>
+            </div>`;
+
+        return leaderboardHTML;
+    }
+
+    generatePerPlayerSummaries() {
+        if (this.squadMembers.length === 0) return '';
+
+        let summariesHTML = `
+            <div class="per-player-summaries">
+                <h3>👥 Individual Performance Records</h3>
+                <div class="player-summaries-grid">`;
+
+        // Sort players by performance score
+        const sortedMembers = [...this.squadMembers].sort((a, b) => {
+            const scoreA = a.kills.total + a.samples - a.deaths;
+            const scoreB = b.kills.total + b.samples - b.deaths;
+            return scoreB - scoreA;
+        });
+
+        sortedMembers.forEach(member => {
+            const statusIcon = '✅';
+            const statusText = 'Helldiver';
+            const statusClass = 'survived';
+
+            let factionBreakdown = '';
+            const memberFactionKills = Object.keys(member.kills.byFaction).filter(faction => member.kills.byFaction[faction] > 0);
+            if (memberFactionKills.length > 0) {
+                factionBreakdown = '<div class="faction-kills">';
+                memberFactionKills.forEach(faction => {
+                    const factionIcon = faction === 'Terminids' ? '🐛' : faction === 'Automatons' ? '🤖' : '🦑';
+                    factionBreakdown += `<div class="faction-kill-stat">
+                        <span class="faction-icon">${factionIcon}</span>
+                        <span>${faction}: ${this.formatNumber(member.kills.byFaction[faction])}</span>
+                    </div>`;
+                });
+                factionBreakdown += '</div>';
+            }
+
+            summariesHTML += `
+                <div class="player-summary-card ${statusClass}">
+                    <div class="player-header">
+                        <div class="player-name">${member.name}</div>
+                        <div class="player-status">
+                            <span class="status-icon">${statusIcon}</span>
+                            <span class="status-text">${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="player-stats">
+                        <div class="primary-stats">
+                            <div class="stat-item">
+                                <span class="stat-icon">⚔️</span>
+                                <span class="stat-text">Total Kills: <strong>${this.formatNumber(member.kills.total)}</strong></span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">💎</span>
+                                <span class="stat-text">Samples: <strong>${this.formatNumber(member.samples)}</strong></span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">💀</span>
+                                <span class="stat-text">Deaths: <strong>${member.deaths}</strong></span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-icon">🎖️</span>
+                                <span class="stat-text">Operations: <strong>${member.missionsCompleted}</strong></span>
+                            </div>
+                        </div>
+                        ${factionBreakdown}
+                    </div>`;
+
+
+            summariesHTML += '</div>';
+        });
+
+        summariesHTML += `
+                </div>
+            </div>`;
+
+        return summariesHTML;
+    }
+
+
+    updateDetailedStatsCompletionScreen(tour) {
+        
+        // Hide KIA section since we no longer track KIA
         const kiaSection = document.getElementById('kia-section');
-        const casualties = this.squadMembers.filter(member => member.isDead);
-        
-        if (casualties.length > 0) {
-            kiaSection.style.display = 'block';
-            kiaList.innerHTML = casualties.map(member => {
-                let entryHTML = `<div class="kia-entry">
-                    <div class="kia-name">${member.name} (Died ${member.deaths} time${member.deaths > 1 ? 's' : ''})</div>`;
-                
-                if (member.deathMission) {
-                    entryHTML += `<div class="kia-details">
-                        <strong>KIA on Mission ${member.deathMission.missionNumber}:</strong> ${member.deathMission.name}<br>
-                        <strong>Objective:</strong> ${member.deathMission.primaryObjective}<br>
-                        <strong>Planet:</strong> ${member.deathMission.planet} vs ${member.deathMission.faction}<br>
-                        <strong>Difficulty:</strong> Level ${member.deathMission.difficulty.level} - ${member.deathMission.difficulty.name}`;
-                    
-                    // Add mission death count if available
-                    if (member.deathMission.missionDeathCount && member.deathMission.missionDeathCount > 1) {
-                        entryHTML += `<br><strong>Deaths in Final Mission:</strong> ${member.deathMission.missionDeathCount}`;
-                    }
-                    
-                    // Add death note if it exists
-                    if (member.deathMission.deathNote && member.deathMission.deathNote.trim() !== '') {
-                        entryHTML += `<br><strong>Cause of Death:</strong> <em>${member.deathMission.deathNote}</em>`;
-                    }
-                    
-                    entryHTML += '</div>';
-                }
-                
-                entryHTML += '</div>';
-                return entryHTML;
-            }).join('');
-        } else {
+        if (kiaSection) {
             kiaSection.style.display = 'none';
         }
     }
@@ -2847,8 +2682,8 @@ class App {
         
         const stats = document.getElementById('failure-stats');
         stats.innerHTML = `
-            <p><strong>Missions Completed:</strong> ${tour.currentMissionIndex} of ${tour.missions.length}</p>
-            <p><strong>Failed Mission:</strong> ${tour.missions[tour.currentMissionIndex]?.name || 'Unknown'}</p>
+            <p><strong>Operations Completed:</strong> ${tour.currentMissionIndex} of ${tour.missions.length}</p>
+            <p><strong>Failed Operation:</strong> ${tour.missions[tour.currentMissionIndex]?.name || 'Unknown'}</p>
             <p><strong>Location:</strong> ${tour.missions[tour.currentMissionIndex]?.planet.name || 'Unknown'}</p>
         `;
     }
@@ -2862,10 +2697,9 @@ class App {
 
     handleStartNewTour() {
         this.currentTour = null;
-        this.pendingDeathNotes = []; // Clear any pending death notes
         document.getElementById('tour-completion').style.display = 'none';
         document.getElementById('tour-failure').style.display = 'none';
-        document.getElementById('legacies-completion').style.display = 'none';
+        document.getElementById('stats-completion').style.display = 'none';
         document.getElementById('death-note-modal').style.display = 'none';
         this.handleStartTour();
     }
@@ -2882,7 +2716,6 @@ class App {
 
     handleReturnToCampaigns() {
         this.currentTour = null;
-        this.pendingDeathNotes = []; // Clear any pending death notes
         // DO NOT disable tour mode - keep it always on
         this.tourMode = true;
         
@@ -2934,49 +2767,1709 @@ class App {
         document.getElementById('democracy-briefing').style.display = 'none';
         document.getElementById('tour-completion').style.display = 'none';
         document.getElementById('tour-failure').style.display = 'none';
-        document.getElementById('death-tracking-dialog').style.display = 'none';
+        document.getElementById('stats-tracking-dialog').style.display = 'none';
         document.getElementById('death-note-modal').style.display = 'none';
-        document.getElementById('legacies-completion').style.display = 'none';
-        document.getElementById('mission-reroll-dialog').style.display = 'none';
+        document.getElementById('stats-completion').style.display = 'none';
     }
 
-    handleMissionReroll(missionIndex) {
-        this.pendingRerollIndex = missionIndex;
-        const dialog = document.getElementById('mission-reroll-dialog');
-        dialog.style.display = 'block';
+    getSquadMemberNames() {
+        const names = [];
+        for (let i = 1; i <= 4; i++) {
+            const input = document.getElementById(`squad-member-${i}`);
+            if (input) {
+                names.push(input.value.trim());
+            }
+        }
+        return names;
     }
 
-    handleConfirmReroll() {
-        this.executeMissionReroll(this.pendingRerollIndex);
-        const dialog = document.getElementById('mission-reroll-dialog');
-        dialog.style.display = 'none';
-        this.pendingRerollIndex = null;
-    }
+    enableStatsMode() {
+        this.statsMode = true;
+        const status = document.getElementById('stats-mode-status');
+        const checkbox = document.getElementById('stats-mode-checkbox');
+        const squadNamesGroup = document.getElementById('squad-names-group');
 
-    handleCancelReroll() {
-        const dialog = document.getElementById('mission-reroll-dialog');
-        dialog.style.display = 'none';
-        this.pendingRerollIndex = null;
-    }
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+        
+        if (status) {
+            status.textContent = 'ON';
+            status.classList.add('active');
+        }
 
-    executeMissionReroll(missionIndex) {
-        if (this.tourMode && this.currentTour) {
-            // Re-roll current mission in tour mode
-            const currentMission = this.currentTour.missions[this.currentTour.currentMissionIndex];
-            const rerolledMission = missionGenerator.rerollMissionObjectives(currentMission);
-            
-            // Update the mission in the tour
-            this.currentTour.missions[this.currentTour.currentMissionIndex] = rerolledMission;
-            
-            // Refresh the mission display
-            this.displayCurrentTourMission();
-        } else {
-            // Re-roll specific mission in campaign mode (if implementing later)
-            console.log(`Re-rolling mission ${missionIndex} in campaign mode`);
-            // This would require access to the campaign missions array
-            // For now, focus on tour mode as requested
+        if (squadNamesGroup) {
+            squadNamesGroup.style.display = 'block';
         }
     }
+
+    initializeSquadStats() {
+        const squadNames = this.getSquadMemberNames().filter(name => name.length > 0);
+        if (squadNames.length === 0) {
+            return null;
+        }
+
+        const squadStats = {};
+        squadNames.forEach(name => {
+            squadStats[name] = {
+                totalKills: 0,
+                totalSamples: 0,
+                totalDeaths: 0,
+                missionsCompleted: 0,
+                missionStats: []
+            };
+        });
+
+        return squadStats;
+    }
+
+    restoreAppState(appState) {
+        // Restore stats mode
+        if (appState.statsMode !== undefined) {
+            this.statsMode = appState.statsMode;
+            const checkbox = document.getElementById('stats-mode-checkbox');
+            const status = document.getElementById('stats-mode-status');
+            const squadNamesGroup = document.getElementById('squad-names-group');
+            
+            if (checkbox) {
+                checkbox.checked = this.statsMode;
+            }
+            
+            if (status) {
+                status.textContent = this.statsMode ? 'ON' : 'OFF';
+                if (this.statsMode) {
+                    status.classList.add('active');
+                } else {
+                    status.classList.remove('active');
+                }
+            }
+            
+            if (squadNamesGroup) {
+                squadNamesGroup.style.display = this.statsMode ? 'block' : 'none';
+            }
+        }
+
+        // Restore squad member names
+        if (appState.squadMemberNames && Array.isArray(appState.squadMemberNames)) {
+            for (let i = 0; i < 4; i++) {
+                const input = document.getElementById(`squad-member-${i + 1}`);
+                if (input) {
+                    input.value = appState.squadMemberNames[i] || '';
+                }
+            }
+        }
+
+        // Restore squad member stats data
+        if (appState.squadMembers && Array.isArray(appState.squadMembers)) {
+            this.squadMembers = appState.squadMembers;
+        }
+    }
+
+    // Campaign Export/Import functionality
+    exportTour() {
+        if (!this.currentTour) {
+            alert('No active tour to export.');
+            return;
+        }
+
+        const exportData = {
+            version: "1.0",
+            exportedAt: new Date().toISOString(),
+            tourData: {
+                name: this.currentTour.name,
+                theme: this.currentTour.theme,
+                currentMissionIndex: this.currentTour.currentMissionIndex || 0,
+                missions: this.currentTour.missions,
+                metadata: this.currentTour.metadata,
+                failed: this.currentTour.failed || false,
+                completed: this.currentTour.completed || false,
+                stats: this.currentTour.stats || null,
+                squadStats: this.currentTour.squadStats || null
+            },
+            appState: {
+                statsMode: this.statsMode,
+                squadMembers: this.squadMembers ? JSON.parse(JSON.stringify(this.squadMembers)) : [],
+                squadMemberNames: this.getSquadMemberNames()
+            }
+        };
+
+        // If this tour was imported from a campaign, also include the original campaign data
+        // This allows users to re-export the campaign structure separately
+        if (this.currentTour.metadata?.isImportedCampaign) {
+            const originalCampaignData = this.currentTour.missions[0]?.originalCampaignData;
+            if (originalCampaignData) {
+                exportData.originalCampaign = {
+                    name: originalCampaignData.name,
+                    description: originalCampaignData.description,
+                    type: originalCampaignData.type,
+                    missions: this.currentTour.missions.map(mission => ({
+                        id: mission.id,
+                        name: mission.name,
+                        planet: mission.originalPlanet || mission.planet,
+                        faction: mission.originalFaction || mission.faction,
+                        difficulty: mission.difficulty,
+                        city: mission.city,
+                        briefing: mission.briefing,
+                        transitionText: mission.transitionText,
+                        enableFallback: mission.enableFallback !== undefined ? mission.enableFallback : true,
+                        isCustom: true
+                    })),
+                    metadata: {
+                        ...this.currentTour.metadata,
+                        type: originalCampaignData.type,
+                        exportedFromTour: true,
+                        exportedAt: new Date().toISOString()
+                    }
+                };
+            }
+        }
+
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `${this.currentTour.name.replace(/[^a-z0-9]/gi, '_')}_tour_export.json`;
+        link.click();
+        
+        URL.revokeObjectURL(link.href);
+    }
+
+    importTour(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importData = JSON.parse(e.target.result);
+                
+                // Validate import data structure
+                if (!importData.version || !importData.tourData) {
+                    throw new Error('Invalid tour export file format');
+                }
+
+                if (!importData.tourData.missions || !importData.tourData.name) {
+                    throw new Error('Tour export file is missing required data');
+                }
+
+                // Restore app state (stats mode and squad members)
+                if (importData.appState) {
+                    console.log('Restoring app state:', importData.appState);
+                    this.restoreAppState(importData.appState);
+                    console.log('Stats mode after restore:', this.statsMode);
+                }
+
+                // Restore tour state
+                this.currentTour = {
+                    name: importData.tourData.name,
+                    theme: importData.tourData.theme,
+                    currentMissionIndex: importData.tourData.currentMissionIndex || 0,
+                    missions: importData.tourData.missions,
+                    metadata: importData.tourData.metadata,
+                    failed: importData.tourData.failed || false,
+                    completed: importData.tourData.completed || false,
+                    stats: importData.tourData.stats || null,
+                    squadStats: importData.tourData.squadStats || null
+                };
+
+                // If tour is completed or failed, show appropriate screen
+                if (this.currentTour.completed) {
+                    document.getElementById('current-mission-display').style.display = 'none';
+                    document.getElementById('tour-completion').style.display = 'block';
+                    // Update completion screen with tour data
+                    if (this.statsMode && this.currentTour.squadStats) {
+                        this.updateStatsCompletionScreen(this.currentTour);
+                    } else {
+                        this.updateNormalCompletionScreen(this.currentTour);
+                    }
+                } else if (this.currentTour.failed) {
+                    document.getElementById('current-mission-display').style.display = 'none';
+                    document.getElementById('tour-failure').style.display = 'block';
+                    // Update failure screen with tour data
+                    document.getElementById('failed-tour-name').textContent = this.currentTour.name;
+                    const stats = document.getElementById('failure-stats');
+                    stats.innerHTML = `
+                        <p><strong>Operations Completed:</strong> ${this.currentTour.currentMissionIndex} of ${this.currentTour.missions.length}</p>
+                        <p><strong>Failed Operation:</strong> ${this.currentTour.missions[this.currentTour.currentMissionIndex]?.name || 'Unknown'}</p>
+                        <p><strong>Location:</strong> ${this.currentTour.missions[this.currentTour.currentMissionIndex]?.planet.name || 'Unknown'}</p>
+                    `;
+                } else {
+                    // Resume active tour - show current mission
+                    console.log(`Resuming active tour "${this.currentTour.name}" at mission ${this.currentTour.currentMissionIndex + 1} of ${this.currentTour.missions.length}`);
+                    document.getElementById('democracy-briefing').style.display = 'none';
+                    document.getElementById('current-mission-display').style.display = 'block';
+                    this.displayCurrentTourMission();
+                }
+
+                // Hide preferences and show tour display
+                document.getElementById('preferences-content').style.display = 'none';
+                document.getElementById('tour-display').style.display = 'block';
+                
+                // Hide the start tour button since a tour is now active
+                const startTourBtn = document.getElementById('start-tour');
+                if (startTourBtn) {
+                    startTourBtn.style.display = 'none';
+                }
+                
+                // Show campaign display section if it's hidden
+                const campaignDisplay = document.getElementById('campaign-display');
+                if (campaignDisplay) {
+                    campaignDisplay.style.display = 'none';
+                }
+                
+                // Ensure stats mode UI is properly set up if stats mode is enabled
+                this.updateStatsModeUI();
+                
+                alert(`Tour "${this.currentTour.name}" imported successfully!`);
+                
+            } catch (error) {
+                alert(`Failed to import tour: ${error.message}`);
+                console.error('Tour import error:', error);
+            }
+            
+            // Clear the file input
+            fileInput.value = '';
+        };
+        
+        reader.readAsText(file);
+    }
+
+    importCampaign(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const campaignData = JSON.parse(e.target.result);
+                
+                // Validate campaign data structure
+                if (!campaignData.name || !campaignData.missions || !Array.isArray(campaignData.missions)) {
+                    throw new Error('Invalid campaign file format');
+                }
+
+                if (campaignData.missions.length === 0) {
+                    throw new Error('Campaign contains no operations');
+                }
+
+                // Show stats mode selection dialog
+                const enableStats = await this.showStatsModeSelectionDialog(campaignData);
+                
+                // Set up stats mode if selected
+                if (enableStats) {
+                    this.enableStatsMode();
+                    
+                    // This is a raw campaign file (not a saved tour), so prompt for new squad member names
+                    console.log('Prompting for squad names for new stats mode on campaign import');
+                    const squadNames = await this.showSquadNameEntryDialog();
+                    if (squadNames && squadNames.length > 0) {
+                        this.squadMembers = squadNames.map(name => ({
+                            name: name.trim(),
+                            kills: {
+                                total: 0,
+                                byFaction: {
+                                    "Terminids": 0,
+                                    "Automatons": 0,
+                                    "Illuminate": 0
+                                }
+                            },
+                            samples: 0,
+                            deaths: 0,
+                            missionsCompleted: 0
+                        })).filter(member => member.name.length > 0);
+                        console.log('Initialized squad members:', this.squadMembers);
+                    }
+                }
+
+                // Convert campaign data to tour format
+                const tour = {
+                    name: campaignData.name,
+                    theme: campaignData.metadata?.theme || 'imported_campaign',
+                    currentMissionIndex: 0,
+                    missions: campaignData.missions.map((mission, index) => ({
+                        ...mission,
+                        id: index,
+                        isImported: true,
+                        originalCampaignData: {
+                            name: campaignData.name,
+                            description: campaignData.description,
+                            type: campaignData.metadata?.type || 'custom'
+                        }
+                    })),
+                    metadata: {
+                        ...campaignData.metadata,
+                        importedAt: new Date().toISOString(),
+                        isImportedCampaign: true,
+                        originalType: campaignData.metadata?.type || 'custom'
+                    },
+                    failed: false,
+                    completed: false,
+                    stats: enableStats ? {} : null,
+                    squadStats: enableStats ? this.initializeSquadStats() : null
+                };
+
+                // Validate imported missions against current war state
+                await this.validateImportedCampaign(tour);
+
+                this.currentTour = tour;
+
+                // Show the first briefing
+                this.showDemocracyBriefing();
+                
+                alert(`Campaign "${campaignData.name}" imported successfully! ${enableStats ? 'Stats mode enabled.' : ''}`);
+                
+            } catch (error) {
+                alert(`Failed to import campaign: ${error.message}`);
+                console.error('Campaign import error:', error);
+            }
+            
+            // Clear the file input
+            fileInput.value = '';
+        };
+        
+        reader.readAsText(file);
+    }
+
+    async showStatsModeSelectionDialog(campaignData) {
+        return new Promise((resolve) => {
+            // Create modal dialog
+            const modal = document.createElement('div');
+            modal.className = 'stats-selection-modal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.8); z-index: 1000;
+                display: flex; align-items: center; justify-content: center;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            modalContent.style.cssText = `
+                background: #1a1a1a; border: 2px solid #ffd700;
+                border-radius: 8px; padding: 2rem; max-width: 500px;
+                color: #ffffff; text-align: center;
+            `;
+            
+            modalContent.innerHTML = `
+                <h3 style="color: #ffd700; margin-bottom: 1rem;">Import Campaign: ${campaignData.name}</h3>
+                <p style="margin-bottom: 1rem;">This campaign contains ${campaignData.missions.length} operations.</p>
+                <p style="margin-bottom: 2rem;">Would you like to enable <strong>Stats Mode</strong> to track squad member statistics throughout this campaign?</p>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button id="enable-stats-btn" style="
+                        background: #4CAF50; color: white; padding: 0.75rem 1.5rem;
+                        border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
+                    ">Enable Stats Mode</button>
+                    <button id="skip-stats-btn" style="
+                        background: #666; color: white; padding: 0.75rem 1.5rem;
+                        border: none; border-radius: 4px; cursor: pointer;
+                    ">Start Without Stats</button>
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Handle button clicks
+            document.getElementById('enable-stats-btn').onclick = () => {
+                document.body.removeChild(modal);
+                resolve(true);
+            };
+            
+            document.getElementById('skip-stats-btn').onclick = () => {
+                document.body.removeChild(modal);
+                resolve(false);
+            };
+        });
+    }
+
+    async validateImportedCampaign(tour) {
+        // This method will check if planets/factions are still available
+        // and mark missions for regeneration if needed
+        try {
+            // Make sure we have current war data
+            if (!this.backgroundDataReady) {
+                await this.ensureBackgroundDataLoaded();
+            }
+            
+            let validationWarnings = [];
+            
+            for (let i = 0; i < tour.missions.length; i++) {
+                const mission = tour.missions[i];
+                
+                // Resolve "any" selections to specific planets/cities
+                await this.resolveAnySelections(mission);
+                
+                // Check if planet is still available for the faction
+                if (mission.planet && mission.faction) {
+                    const currentEnemy = apiService.getCurrentEnemy(mission.planet);
+                    if (currentEnemy !== mission.faction) {
+                        mission.needsRegeneration = true;
+                        mission.originalPlanet = { ...mission.planet };
+                        mission.originalFaction = mission.faction;
+                        validationWarnings.push(`Operation ${i + 1}: ${mission.planet.name} is no longer controlled by ${mission.faction}`);
+                    }
+                }
+            }
+            
+            if (validationWarnings.length > 0) {
+                const warningMessage = `Some operations may need to be updated due to changes in the galactic war:\n\n${validationWarnings.join('\n')}\n\nThese will be automatically updated when you reach them to maintain campaign playability.`;
+                alert(warningMessage);
+            }
+            
+        } catch (error) {
+            console.warn('Could not validate campaign against current war state:', error);
+            // Campaign can still be imported, but without validation
+        }
+    }
+
+    async resolveAnySelections(mission) {
+        // Resolve "any" planet selection
+        if (mission.planet === 'any' && mission.faction) {
+            try {
+                const availablePlanets = apiService.getEnemyPlanets(apiService.lastWarData?.planets || []);
+                const factionPlanets = availablePlanets.filter(planet => 
+                    apiService.getCurrentEnemy(planet) === mission.faction &&
+                    planet.liberation < 100
+                );
+                
+                if (factionPlanets.length > 0) {
+                    // Select random planet for the faction
+                    const selectedPlanet = factionPlanets[Math.floor(Math.random() * factionPlanets.length)];
+                    mission.planet = selectedPlanet;
+                    console.log(`Resolved "any" planet to: ${selectedPlanet.name} for faction ${mission.faction}`);
+                } else {
+                    console.warn(`No available planets found for faction ${mission.faction}, keeping "any" selection`);
+                }
+            } catch (error) {
+                console.error('Failed to resolve "any" planet selection:', error);
+            }
+        }
+        
+        // Resolve "any" city selection
+        if (mission.city === 'any' && mission.planet && mission.planet !== 'any') {
+            try {
+                // Check if planet has available regions/cities
+                const hasRegions = mission.planet.availableRegions?.length > 0 || 
+                                 mission.planet.activeRegions?.length > 0 ||
+                                 (mission.planet.regions && mission.planet.regions.filter(r => r.isAvailable).length > 0);
+                
+                if (hasRegions && window.cityMappings) {
+                    const regionCount = mission.planet.availableRegions ? mission.planet.availableRegions.length : 
+                                      mission.planet.activeRegions ? mission.planet.activeRegions.length :
+                                      mission.planet.regions ? mission.planet.regions.filter(r => r.isAvailable).length : 1;
+                    
+                    const cities = window.cityMappings.getCitiesForPlanet(mission.planet.name, regionCount);
+                    
+                    if (cities.length > 0) {
+                        // 50/50 chance between city and surface mission
+                        if (Math.random() < 0.5) {
+                            // Select a random city
+                            const selectedCity = cities[Math.floor(Math.random() * cities.length)];
+                            mission.city = selectedCity.index;
+                            console.log(`Resolved "any" city to: ${selectedCity.name} on ${mission.planet.name}`);
+                        } else {
+                            // Use surface mission
+                            mission.city = '';
+                            console.log(`Resolved "any" city to: Surface mission on ${mission.planet.name}`);
+                        }
+                    } else {
+                        // No cities available, default to surface
+                        mission.city = '';
+                        console.log(`No cities available on ${mission.planet.name}, defaulting to surface mission`);
+                    }
+                } else {
+                    // No regions available, default to surface
+                    mission.city = '';
+                    console.log(`No regions available on ${mission.planet.name}, defaulting to surface mission`);
+                }
+            } catch (error) {
+                console.error('Failed to resolve "any" city selection:', error);
+                mission.city = ''; // Default to surface on error
+            }
+        }
+    }
+
+    async regenerateImportedMission(mission) {
+        try {
+            console.log(`Regenerating mission: ${mission.name} (${mission.originalFaction} on ${mission.originalPlanet?.name})`);
+            
+            // Ensure we have fresh war data
+            if (!this.backgroundDataReady) {
+                await this.ensureBackgroundDataLoaded();
+            }
+            
+            // Try to find a suitable replacement planet for the same faction
+            const availablePlanets = apiService.getEnemyPlanets(apiService.lastWarData?.planets || []);
+            const factionPlanets = availablePlanets.filter(planet => 
+                apiService.getCurrentEnemy(planet) === mission.originalFaction
+            );
+            
+            if (factionPlanets.length > 0) {
+                // Try to find a planet with the same biome as the original
+                const originalBiome = apiService.getPlanetBiome(mission.originalPlanet);
+                let replacementPlanet = factionPlanets.find(planet => 
+                    apiService.getPlanetBiome(planet) === originalBiome
+                );
+                
+                // If no same-biome planet found, use any available planet of the same faction
+                if (!replacementPlanet) {
+                    replacementPlanet = factionPlanets[Math.floor(Math.random() * factionPlanets.length)];
+                }
+                
+                // Update the mission
+                mission.planet = replacementPlanet;
+                mission.faction = mission.originalFaction;
+                mission.city = null; // Clear city selection as it may not be valid for new planet
+                mission.needsRegeneration = false;
+                
+                console.log(`Mission regenerated: ${mission.originalFaction} on ${replacementPlanet.name} (${apiService.getPlanetBiome(replacementPlanet)} biome)`);
+                
+                // Show notification to user
+                const notification = `Operation ${mission.name} updated: Now targeting ${replacementPlanet.name} instead of ${mission.originalPlanet?.name} due to changes in the galactic war.`;
+                this.showMissionRegenerationNotification(notification);
+                
+            } else {
+                // No planets available for original faction, try to find alternative faction
+                const availableFactions = apiService.getAvailableFactions(availablePlanets);
+                if (availableFactions.length > 0) {
+                    const newFaction = availableFactions[Math.floor(Math.random() * availableFactions.length)];
+                    const newFactionPlanets = availablePlanets.filter(planet => 
+                        apiService.getCurrentEnemy(planet) === newFaction
+                    );
+                    
+                    const newPlanet = newFactionPlanets[Math.floor(Math.random() * newFactionPlanets.length)];
+                    
+                    mission.planet = newPlanet;
+                    mission.faction = newFaction;
+                    mission.city = null;
+                    mission.needsRegeneration = false;
+                    
+                    console.log(`Mission regenerated with new faction: ${newFaction} on ${newPlanet.name}`);
+                    
+                    const notification = `Operation ${mission.name} updated: Target changed to ${newFaction} on ${newPlanet.name} due to strategic changes in the galactic war.`;
+                    this.showMissionRegenerationNotification(notification);
+                } else {
+                    console.error('No suitable planets found for mission regeneration');
+                    // Keep original mission data but mark as potentially unavailable
+                    mission.needsRegeneration = false;
+                    mission.regenerationFailed = true;
+                }
+            }
+            
+        } catch (error) {
+            console.error('Failed to regenerate mission:', error);
+            mission.needsRegeneration = false;
+            mission.regenerationFailed = true;
+        }
+    }
+
+    showMissionRegenerationNotification(message) {
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed; top: 20px; right: 20px; z-index: 1001;
+            background: #2196F3; color: white; padding: 1rem;
+            border-radius: 4px; max-width: 300px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            font-size: 0.9rem; line-height: 1.4;
+        `;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 5000);
+    }
+
+    handleExportTour() {
+        this.exportTour();
+    }
+
+    handleExportCampaignFromTour() {
+        if (!this.currentTour) {
+            alert('No active tour to export campaign from.');
+            return;
+        }
+
+        if (!this.currentTour.metadata?.isImportedCampaign) {
+            alert('This tour was not imported from a campaign. Use "Export Tour" instead.');
+            return;
+        }
+
+        const originalCampaignData = this.currentTour.missions[0]?.originalCampaignData;
+        if (!originalCampaignData) {
+            alert('Original campaign data not available.');
+            return;
+        }
+
+        // Create the campaign export data
+        const campaignExport = {
+            name: originalCampaignData.name,
+            description: originalCampaignData.description,
+            missions: this.currentTour.missions.map(mission => ({
+                id: mission.id,
+                name: mission.name,
+                planet: mission.originalPlanet || mission.planet,
+                faction: mission.originalFaction || mission.faction,
+                difficulty: mission.difficulty,
+                city: mission.city,
+                briefing: mission.briefing,
+                transitionText: mission.transitionText,
+                enableFallback: mission.enableFallback !== undefined ? mission.enableFallback : true,
+                isCustom: true
+            })),
+            metadata: {
+                type: originalCampaignData.type,
+                createdAt: this.currentTour.metadata.createdAt || new Date().toISOString(),
+                exportedFromTour: true,
+                exportedAt: new Date().toISOString(),
+                version: '1.0',
+                operationCount: this.currentTour.missions.length
+            }
+        };
+
+        this.downloadJSON(campaignExport, `${originalCampaignData.name.replace(/[^a-z0-9]/gi, '_')}_campaign.json`);
+    }
+
+    handleImportTour() {
+        const fileInput = document.getElementById('import-tour-file');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    handleImportCampaignMain() {
+        const fileInput = document.getElementById('import-campaign-main-file');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    handleUnifiedImport(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const importData = JSON.parse(e.target.result);
+                
+                // Detect file type based on structure
+                if (importData.version && importData.tourData) {
+                    // This is a tour file - has version and tourData wrapper
+                    console.log('Detected tour file, importing as tour');
+                    this.importTourData(importData, fileInput);
+                } else if (importData.name && importData.missions && Array.isArray(importData.missions)) {
+                    // This is a campaign file - has direct name and missions
+                    console.log('Detected campaign file, importing as campaign');
+                    this.importCampaignData(importData, fileInput);
+                } else {
+                    throw new Error('Unrecognized file format. Please ensure you are importing a valid tour or campaign file.');
+                }
+                
+            } catch (error) {
+                alert(`Failed to import file: ${error.message}`);
+                console.error('Import error:', error);
+            }
+            
+            // Clear the file input
+            fileInput.value = '';
+        };
+        
+        reader.readAsText(file);
+    }
+
+    importTourData(importData, fileInput) {
+        try {
+            // Validate import data structure
+            if (!importData.version || !importData.tourData) {
+                throw new Error('Invalid tour export file format');
+            }
+
+            if (!importData.tourData.missions || !importData.tourData.name) {
+                throw new Error('Tour export file is missing required data');
+            }
+
+            // Use existing importTour logic but with parsed data
+            // Restore app state (stats mode and squad members)
+            if (importData.appState) {
+                console.log('Saved tour detected - restoring existing stats and squad data');
+                console.log('Restoring app state:', importData.appState);
+                this.restoreAppState(importData.appState);
+                console.log('Stats mode after restore:', this.statsMode);
+                console.log('Squad members after restore:', this.squadMembers);
+            }
+
+            // Restore tour state
+            this.currentTour = {
+                name: importData.tourData.name,
+                theme: importData.tourData.theme,
+                currentMissionIndex: importData.tourData.currentMissionIndex || 0,
+                missions: importData.tourData.missions,
+                metadata: importData.tourData.metadata,
+                failed: importData.tourData.failed || false,
+                completed: importData.tourData.completed || false,
+                stats: importData.tourData.stats || null,
+                squadStats: importData.tourData.squadStats || null
+            };
+
+            // If tour is completed or failed, show appropriate screen
+            if (this.currentTour.completed) {
+                document.getElementById('current-mission-display').style.display = 'none';
+                document.getElementById('tour-completion').style.display = 'block';
+                // Update completion screen with tour data
+                if (this.statsMode && this.currentTour.squadStats) {
+                    this.updateStatsCompletionScreen(this.currentTour);
+                } else {
+                    this.updateNormalCompletionScreen(this.currentTour);
+                }
+            } else if (this.currentTour.failed) {
+                document.getElementById('current-mission-display').style.display = 'none';
+                document.getElementById('tour-failure').style.display = 'block';
+                // Update failure screen with tour data
+                document.getElementById('failed-tour-name').textContent = this.currentTour.name;
+                const stats = document.getElementById('failure-stats');
+                stats.innerHTML = `
+                    <p><strong>Operations Completed:</strong> ${this.currentTour.currentMissionIndex} of ${this.currentTour.missions.length}</p>
+                    <p><strong>Failed Operation:</strong> ${this.currentTour.missions[this.currentTour.currentMissionIndex]?.name || 'Unknown'}</p>
+                    <p><strong>Location:</strong> ${this.currentTour.missions[this.currentTour.currentMissionIndex]?.planet.name || 'Unknown'}</p>
+                `;
+            } else {
+                // Resume active tour - show current mission
+                console.log(`Resuming active tour "${this.currentTour.name}" at mission ${this.currentTour.currentMissionIndex + 1} of ${this.currentTour.missions.length}`);
+                document.getElementById('democracy-briefing').style.display = 'none';
+                document.getElementById('current-mission-display').style.display = 'block';
+                this.displayCurrentTourMission();
+            }
+
+            // Hide preferences and show tour display
+            document.getElementById('preferences-content').style.display = 'none';
+            document.getElementById('tour-display').style.display = 'block';
+            
+            // Hide the start tour button since a tour is now active
+            const startTourBtn = document.getElementById('start-tour');
+            if (startTourBtn) {
+                startTourBtn.style.display = 'none';
+            }
+            
+            // Show campaign display section if it's hidden
+            const campaignDisplay = document.getElementById('campaign-display');
+            if (campaignDisplay) {
+                campaignDisplay.style.display = 'none';
+            }
+            
+            // Ensure stats mode UI is properly set up if stats mode is enabled
+            this.updateStatsModeUI();
+            
+            alert(`Tour "${this.currentTour.name}" imported successfully!`);
+            
+        } catch (error) {
+            alert(`Failed to import tour: ${error.message}`);
+            console.error('Tour import error:', error);
+        }
+    }
+
+    async importCampaignData(campaignData, fileInput) {
+        try {
+            // Validate campaign data structure
+            if (!campaignData.name || !campaignData.missions || !Array.isArray(campaignData.missions)) {
+                throw new Error('Invalid campaign file format');
+            }
+
+            if (campaignData.missions.length === 0) {
+                throw new Error('Campaign contains no operations');
+            }
+
+            // Show stats mode selection dialog
+            const enableStats = await this.showStatsModeSelectionDialog(campaignData);
+            
+            // Set up stats mode if selected
+            if (enableStats) {
+                this.enableStatsMode();
+                
+                // This is a raw campaign file (not a saved tour), so prompt for new squad member names
+                console.log('Prompting for squad names for new stats mode on campaign import');
+                const squadNames = await this.showSquadNameEntryDialog();
+                if (squadNames && squadNames.length > 0) {
+                    this.squadMembers = squadNames.map(name => ({
+                        name: name.trim(),
+                        kills: {
+                            total: 0,
+                            byFaction: {
+                                "Terminids": 0,
+                                "Automatons": 0,
+                                "Illuminate": 0
+                            }
+                        },
+                        samples: 0,
+                        deaths: 0,
+                        missionsCompleted: 0
+                    })).filter(member => member.name.length > 0);
+                    console.log('Initialized squad members:', this.squadMembers);
+                }
+            }
+
+            // Convert campaign data to tour format
+            const tour = {
+                name: campaignData.name,
+                theme: campaignData.metadata?.theme || 'imported_campaign',
+                currentMissionIndex: 0,
+                missions: campaignData.missions.map((mission, index) => ({
+                    ...mission,
+                    id: mission.id || `mission_${index + 1}`
+                })),
+                metadata: {
+                    isImportedCampaign: true,
+                    originalCampaignData: campaignData
+                },
+                failed: false,
+                completed: false,
+                stats: enableStats ? {
+                    totalKills: 0,
+                    totalSamples: 0,
+                    totalDeaths: 0,
+                    operationsCompleted: 0,
+                    operationsFailed: 0
+                } : null,
+                squadStats: enableStats ? this.initializeSquadStats() : null
+            };
+
+            // Validate that missions have required data (will regenerate missing planet data)
+            await this.validateImportedCampaign(tour);
+
+            // Set as current tour
+            this.currentTour = tour;
+
+            // Show briefing for first mission
+            this.displayCurrentTourMission();
+
+            // Hide preferences and show tour display
+            document.getElementById('preferences-content').style.display = 'none';
+            document.getElementById('tour-display').style.display = 'block';
+            
+            alert(`Campaign "${campaignData.name}" imported and converted to tour successfully!`);
+            
+        } catch (error) {
+            alert(`Failed to import campaign: ${error.message}`);
+            console.error('Campaign import error:', error);
+        }
+    }
+
+    // Campaign Builder Methods
+    setupCampaignBuilderListeners() {
+        // Back to generator button
+        const backBtn = document.getElementById('back-to-generator');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => this.handleBackToGenerator());
+        }
+
+        // Add operation button
+        const addOperationBtn = document.getElementById('add-operation-btn');
+        if (addOperationBtn) {
+            addOperationBtn.addEventListener('click', () => this.handleAddOperation());
+        }
+
+        // Campaign metadata inputs
+        const nameInput = document.getElementById('campaign-name-input');
+        if (nameInput) {
+            nameInput.addEventListener('input', (e) => this.handleCampaignMetadataChange('name', e.target.value));
+        }
+
+        const descInput = document.getElementById('campaign-description-input');
+        if (descInput) {
+            descInput.addEventListener('input', (e) => this.handleCampaignMetadataChange('description', e.target.value));
+        }
+
+        // Builder action buttons
+        const previewBtn = document.getElementById('preview-campaign');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', () => this.handlePreviewCampaign());
+        }
+
+        const exportBtn = document.getElementById('export-custom-campaign');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.handleExportCustomCampaign());
+        }
+
+        const importBtn = document.getElementById('import-custom-campaign');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => this.handleImportCustomCampaign());
+        }
+
+        const importFile = document.getElementById('import-custom-file');
+        if (importFile) {
+            importFile.addEventListener('change', (e) => this.handleCustomFileImport(e));
+        }
+
+        const resetBtn = document.getElementById('reset-builder');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.handleResetBuilder());
+        }
+
+        // Preview modal buttons
+        const closePreview = document.getElementById('close-preview');
+        const closePreview2 = document.getElementById('close-preview-2');
+        if (closePreview) {
+            closePreview.addEventListener('click', () => this.handleClosePreview());
+        }
+        if (closePreview2) {
+            closePreview2.addEventListener('click', () => this.handleClosePreview());
+        }
+
+        const startCustomTour = document.getElementById('start-custom-tour');
+        if (startCustomTour) {
+            startCustomTour.addEventListener('click', () => this.handleStartCustomTour());
+        }
+    }
+
+    async handleShowCampaignBuilder() {
+        try {
+            console.log('Opening Campaign Builder...');
+            
+            // Check if API data is available before allowing the builder to open
+            if (!apiService.hasInitialData && !this.lastGameData) {
+                console.log('No API data available, fetching data first...');
+                
+                // Show loading state
+                this.showLoading('Loading galactic war data for Campaign Builder...');
+                
+                try {
+                    // Fetch data first
+                    const gameData = await apiService.getAllGameData();
+                    this.lastGameData = gameData;
+                    
+                    // Hide loading state
+                    this.hideLoading();
+                } catch (dataError) {
+                    console.error('Failed to fetch API data for Campaign Builder:', dataError);
+                    this.hideLoading();
+                    this.showError('Cannot open Campaign Builder: Failed to load galactic war data. Please try again.');
+                    return;
+                }
+            }
+            
+            // Hide current sections
+            document.getElementById('campaign-display').style.display = 'none';
+            document.getElementById('tour-display').style.display = 'none';
+            document.querySelector('.generator-controls').style.display = 'none';
+            
+            // Show campaign builder
+            document.getElementById('campaign-builder-section').style.display = 'block';
+            
+            // Initialize campaign builder  
+            campaignBuilder.initialize();
+            
+            // If we have game data from a previous generation, use it
+            if (this.lastGameData) {
+                campaignBuilder.setGameData(this.lastGameData);
+            } else {
+                // This should not happen anymore due to the check above, but keep as fallback
+                const gameData = await apiService.getAllGameData();
+                this.lastGameData = gameData;
+                campaignBuilder.setGameData(gameData);
+            }
+            
+            // Refresh UI after initialization is complete
+            this.refreshBuilderUI();
+            
+        } catch (error) {
+            console.error('Failed to show Campaign Builder:', error);
+            document.getElementById('campaign-builder-section').style.display = 'none';
+            document.querySelector('.generator-controls').style.display = 'block';
+            this.showError('Failed to initialize Campaign Builder. Please try again.');
+        }
+    }
+
+    handleBackToGenerator() {
+        // Show generator controls
+        document.querySelector('.generator-controls').style.display = 'block';
+        
+        // Hide campaign builder
+        document.getElementById('campaign-builder-section').style.display = 'none';
+        
+        // Hide other sections
+        document.getElementById('campaign-display').style.display = 'none';
+        document.getElementById('tour-display').style.display = 'none';
+    }
+
+    async handleAddOperation() {
+        const operation = campaignBuilder.addOperation();
+        this.renderOperation(operation);
+        this.updateValidationStatus();
+    }
+
+    handleCampaignMetadataChange(field, value) {
+        campaignBuilder.campaign[field] = value;
+        this.updateValidationStatus();
+    }
+
+    renderOperation(operation) {
+        const container = document.getElementById('operations-container');
+        const operationElement = this.createOperationElement(operation);
+        container.appendChild(operationElement);
+    }
+
+    createOperationElement(operation) {
+        const div = document.createElement('div');
+        div.className = 'operation-card';
+        div.dataset.operationId = operation.id;
+        div.draggable = true;
+        
+        div.innerHTML = `
+            <div class="operation-header">
+                <div class="operation-title">
+                    <input type="text" class="operation-name-input" value="${operation.name}" 
+                           data-operation-id="${operation.id}" data-field="name" maxlength="50">
+                    <button class="delete-operation-btn" data-operation-id="${operation.id}">×</button>
+                </div>
+                <div class="operation-status ${operation.isValid ? 'valid' : 'invalid'}">
+                    ${operation.isValid ? '✓' : '!'}
+                </div>
+            </div>
+            
+            <div class="operation-content">
+                <div class="operation-row">
+                    <div class="operation-field">
+                        <label>Faction:</label>
+                        <select class="operation-faction-select" data-operation-id="${operation.id}" data-field="faction">
+                            <option value="">Select faction...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="operation-field">
+                        <label>Planet:</label>
+                        <select class="operation-planet-select" data-operation-id="${operation.id}" data-field="planet" disabled>
+                            <option value="">Select planet...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="operation-field">
+                        <label>Difficulty:</label>
+                        <select class="operation-difficulty-select" data-operation-id="${operation.id}" data-field="difficulty">
+                            ${this.generateDifficultyOptions(operation.difficulty)}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="operation-row">
+                    <div class="operation-field">
+                        <label>City/Region:</label>
+                        <select class="operation-city-select" data-operation-id="${operation.id}" data-field="city" disabled>
+                            <option value="">Surface mission</option>
+                        </select>
+                    </div>
+                    
+                    <div class="operation-field">
+                        <label class="fallback-label">
+                            <input type="checkbox" class="operation-fallback-checkbox" 
+                                   data-operation-id="${operation.id}" data-field="enableFallback" 
+                                   ${operation.enableFallback ? 'checked' : ''}>
+                            Enable Fallback
+                        </label>
+                        <small>Auto-select similar planet if unavailable</small>
+                    </div>
+                </div>
+                
+                <div class="operation-narrative">
+                    <div class="narrative-field">
+                        <label>Briefing Text:</label>
+                        <textarea class="operation-briefing-textarea" data-operation-id="${operation.id}" 
+                                  data-field="briefingText" rows="3" 
+                                  placeholder="Custom briefing for this operation...">${operation.briefingText}</textarea>
+                    </div>
+                    
+                    <div class="narrative-field">
+                        <label>Transition Text:</label>
+                        <textarea class="operation-transition-textarea" data-operation-id="${operation.id}" 
+                                  data-field="transitionText" rows="2" 
+                                  placeholder="Text between this and next operation...">${operation.transitionText}</textarea>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners for this operation
+        this.setupOperationListeners(div, operation);
+        
+        return div;
+    }
+
+    generateDifficultyOptions(selectedDifficulty) {
+        const difficulties = [
+            { value: 1, name: 'Trivial' },
+            { value: 2, name: 'Easy' },
+            { value: 3, name: 'Medium' },
+            { value: 4, name: 'Challenging' },
+            { value: 5, name: 'Hard' },
+            { value: 6, name: 'Extreme' },
+            { value: 7, name: 'Suicide Mission' },
+            { value: 8, name: 'Impossible' },
+            { value: 9, name: 'Helldive' },
+            { value: 10, name: 'Super Helldive' }
+        ];
+
+        return difficulties.map(diff => 
+            `<option value="${diff.value}" ${diff.value === selectedDifficulty ? 'selected' : ''}>
+                ${diff.value} - ${diff.name}
+            </option>`
+        ).join('');
+    }
+
+    async setupOperationListeners(operationElement, operation) {
+        // Setup all listeners for operation controls
+        const operationId = operation.id;
+        
+        try {
+            // Name input
+            const nameInput = operationElement.querySelector('.operation-name-input');
+            nameInput.addEventListener('input', (e) => this.handleOperationChange(operationId, 'name', e.target.value));
+            
+            // Delete button
+            const deleteBtn = operationElement.querySelector('.delete-operation-btn');
+            deleteBtn.addEventListener('click', () => this.handleDeleteOperation(operationId));
+            
+            // Faction select - populate synchronously to avoid loops
+            const factionSelect = operationElement.querySelector('.operation-faction-select');
+            this.populateFactionOptionsSync(factionSelect);
+            if (operation.faction) factionSelect.value = operation.faction;
+            factionSelect.addEventListener('change', (e) => this.handleFactionChange(operationId, e.target.value));
+            
+            // Planet select
+            const planetSelect = operationElement.querySelector('.operation-planet-select');
+            if (operation.faction) {
+                this.populatePlanetOptionsSync(planetSelect, operation.faction);
+                if (operation.planet) {
+                    planetSelect.value = operation.planet ? operation.planet.id : '';
+                }
+            }
+            planetSelect.addEventListener('change', (e) => this.handlePlanetChange(operationId, e.target.value));
+            
+            // Difficulty select
+            const difficultySelect = operationElement.querySelector('.operation-difficulty-select');
+            difficultySelect.addEventListener('change', (e) => this.handleOperationChange(operationId, 'difficulty', parseInt(e.target.value)));
+            
+            // City select
+            const citySelect = operationElement.querySelector('.operation-city-select');
+            if (operation.planet) {
+                // Don't populate cities immediately to avoid API loop
+                citySelect.disabled = false;
+            }
+            citySelect.addEventListener('change', (e) => this.handleCityChange(operationId, e.target.value));
+            
+            // Fallback checkbox
+            const fallbackCheck = operationElement.querySelector('.operation-fallback-checkbox');
+            fallbackCheck.addEventListener('change', (e) => this.handleOperationChange(operationId, 'enableFallback', e.target.checked));
+            
+            // Narrative textareas
+            const briefingText = operationElement.querySelector('.operation-briefing-textarea');
+            briefingText.addEventListener('input', (e) => this.handleOperationChange(operationId, 'briefingText', e.target.value));
+            
+            const transitionText = operationElement.querySelector('.operation-transition-textarea');
+            transitionText.addEventListener('input', (e) => this.handleOperationChange(operationId, 'transitionText', e.target.value));
+            
+            // Drag and drop
+            operationElement.addEventListener('dragstart', (e) => this.handleDragStart(e, operationId));
+            operationElement.addEventListener('dragover', (e) => this.handleDragOver(e));
+            operationElement.addEventListener('drop', (e) => this.handleDrop(e, operationId));
+        } catch (error) {
+            console.error('Error setting up operation listeners:', error);
+        }
+    }
+
+    populateFactionOptionsSync(selectElement) {
+        // Just use the same hardcoded factions as the working generator
+        const factions = ['Terminids', 'Automatons', 'Illuminate'];
+        selectElement.innerHTML = '<option value="">Select faction...</option>';
+        factions.forEach(faction => {
+            const option = document.createElement('option');
+            option.value = faction;
+            option.textContent = faction;
+            selectElement.appendChild(option);
+        });
+    }
+
+    async populateFactionOptions(selectElement) {
+        try {
+            const factions = await apiService.getAvailableFactionsAsync();
+            selectElement.innerHTML = '<option value="">Select faction...</option>';
+            factions.forEach(faction => {
+                const option = document.createElement('option');
+                option.value = faction;
+                option.textContent = faction;
+                selectElement.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to populate faction options:', error);
+        }
+    }
+
+    async populatePlanetOptionsSync(selectElement, faction) {
+        try {
+            // Use EXACT same logic as working populatePlanetOptions
+            const gameData = await apiService.getAllGameData();
+            const planets = gameData.planets;
+            const enemyPlanets = apiService.getEnemyPlanets(planets);
+            
+            // Filter by the specified faction (same logic as working method)
+            let availablePlanets = enemyPlanets;
+            if (faction && faction !== 'any') {
+                availablePlanets = enemyPlanets.filter(planet => 
+                    apiService.getCurrentEnemy(planet) === faction &&
+                    (planet.liberation < 100) // Only show planets that aren't fully liberated
+                );
+            }
+            
+            // Sort planets alphabetically
+            availablePlanets.sort((a, b) => a.name.localeCompare(b.name));
+            
+            console.log(`CAMPAIGN BUILDER DEBUG: Found ${availablePlanets.length} planets for faction ${faction}:`);
+            availablePlanets.forEach(planet => {
+                console.log(`- ${planet.name}: liberation=${planet.liberation}%, owner=${planet.currentOwner}, disabled=${planet.disabled}, hasRegions=${planet.availableRegions?.length || 0}`);
+            });
+            
+            selectElement.innerHTML = '<option value="">Select planet...</option>';
+            
+            // Add "Any" option for dynamic planet selection
+            const anyOption = document.createElement('option');
+            anyOption.value = 'any';
+            anyOption.textContent = 'Any Available Planet';
+            selectElement.appendChild(anyOption);
+            
+            availablePlanets.forEach(planet => {
+                const option = document.createElement('option');
+                option.value = planet.id;
+                const faction = apiService.getCurrentEnemy(planet);
+                option.textContent = `${planet.name} (${faction})`;
+                selectElement.appendChild(option);
+            });
+            selectElement.disabled = false;
+        } catch (error) {
+            console.error('Failed to populate planet options:', error);
+            selectElement.disabled = true;
+        }
+    }
+
+    async populatePlanetOptions(selectElement, faction) {
+        try {
+            const planets = apiService.getPlanetsByFactionForBuilder(faction);
+            selectElement.innerHTML = '<option value="">Select planet...</option>';
+            planets.forEach(planet => {
+                const option = document.createElement('option');
+                option.value = planet.id;
+                option.textContent = `${planet.name} (${planet.biome.name})`;
+                selectElement.appendChild(option);
+            });
+            selectElement.disabled = false;
+        } catch (error) {
+            console.error('Failed to populate planet options:', error);
+            selectElement.disabled = true;
+        }
+    }
+
+    async populateCityOptions(selectElement, planetId) {
+        try {
+            // Get fresh data like the working generator methods do
+            const gameData = await apiService.getAllGameData();
+            const planets = gameData.planets;
+            const planet = planets.find(p => p.id == planetId);
+            
+            if (!planet) {
+                selectElement.innerHTML = '<option value="">Surface mission</option>';
+                selectElement.disabled = true;
+                return;
+            }
+            
+            // Check if planet has available regions (EXACT same logic as campaign generator)
+            const hasRegions = (planet.availableRegions && planet.availableRegions.length > 0) ||
+                              (planet.activeRegions && planet.activeRegions.length > 0) ||
+                              (planet.regions && planet.regions.filter(r => r.isAvailable).length > 0);
+            
+            console.log(`CITY DEBUG for ${planet.name}:`);
+            console.log(`- availableRegions: ${planet.availableRegions?.length || 0}`);
+            console.log(`- activeRegions: ${planet.activeRegions?.length || 0}`);
+            console.log(`- regions with isAvailable: ${planet.regions?.filter(r => r.isAvailable).length || 0}`);
+            console.log(`- hasRegions: ${hasRegions}`);
+            console.log(`- cityMappings available: ${!!window.cityMappings}`);
+            
+            selectElement.innerHTML = '<option value="">Surface mission</option>';
+            
+            // Add "Any" option for dynamic city/surface selection
+            const anyOption = document.createElement('option');
+            anyOption.value = 'any';
+            anyOption.textContent = 'Any Available (City or Surface)';
+            selectElement.appendChild(anyOption);
+            
+            if (hasRegions && window.cityMappings) {
+                // Use the EXACT same approach as the working generator
+                const regionCount = planet.availableRegions ? planet.availableRegions.length : 
+                                  planet.activeRegions ? planet.activeRegions.length :
+                                  planet.regions ? planet.regions.filter(r => r.isAvailable).length : 1;
+                const cities = window.cityMappings.getCitiesForPlanet(planet.name, regionCount);
+                console.log(`- Found ${cities.length} city mappings for ${planet.name} with regionCount=${regionCount}`);
+                if (cities.length > 0) {
+                    cities.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city.index;
+                        option.textContent = city.name;
+                        selectElement.appendChild(option);
+                    });
+                }
+            }
+            
+            selectElement.disabled = false;
+        } catch (error) {
+            console.error('Failed to populate city options:', error);
+            selectElement.disabled = true;
+        }
+    }
+
+    handleOperationChange(operationId, field, value) {
+        campaignBuilder.updateOperation(operationId, { [field]: value });
+        this.updateOperationStatus(operationId);
+        this.updateValidationStatus();
+    }
+
+    async handleFactionChange(operationId, faction) {
+        const operation = campaignBuilder.getOperation(operationId);
+        if (operation) {
+            operation.faction = faction;
+            operation.planet = null; // Reset planet when faction changes
+            operation.city = null; // Reset city when faction changes
+            operation.validate();
+            
+            // Update UI
+            const operationElement = document.querySelector(`[data-operation-id="${operationId}"]`);
+            const planetSelect = operationElement.querySelector('.operation-planet-select');
+            const citySelect = operationElement.querySelector('.operation-city-select');
+            
+            if (faction) {
+                await this.populatePlanetOptionsSync(planetSelect, faction);
+            } else {
+                planetSelect.innerHTML = '<option value="">Select planet...</option>';
+                planetSelect.disabled = true;
+            }
+            
+            citySelect.innerHTML = '<option value="">Surface mission</option>';
+            citySelect.disabled = true;
+            
+            this.updateOperationStatus(operationId);
+            this.updateValidationStatus();
+        }
+    }
+
+    async handlePlanetChange(operationId, planetId) {
+        const operation = campaignBuilder.getOperation(operationId);
+        if (operation && planetId) {
+            // Use cached planets from campaign builder to avoid API call
+            let planet = null;
+            for (const [faction, planets] of campaignBuilder.availablePlanets) {
+                planet = planets.find(p => p.id == planetId);
+                if (planet) break;
+            }
+            
+            if (!planet) {
+                console.warn(`Planet with ID ${planetId} not found in cached data`);
+                return;
+            }
+            
+            operation.planet = planet;
+            operation.city = null; // Reset city when planet changes
+            operation.validate();
+            
+            // Update city options using the working city population method
+            const operationElement = document.querySelector(`[data-operation-id="${operationId}"]`);
+            const citySelect = operationElement.querySelector('.operation-city-select');
+            
+            // Use the same method that works for city population
+            await this.populateCityOptions(citySelect, planetId);
+            
+            this.updateOperationStatus(operationId);
+            this.updateValidationStatus();
+        }
+    }
+
+    handleCityChange(operationId, cityId) {
+        const operation = campaignBuilder.getOperation(operationId);
+        if (operation) {
+            if (cityId) {
+                // Find city in available cities using planet data and city index
+                const availableCities = campaignBuilder.getAvailableCitiesForPlanet(operation.planet);
+                operation.city = availableCities.find(c => c.index == cityId);
+                console.log(`Selected city: ${operation.city?.name || 'Not found'} on ${operation.planet.name}`);
+            } else {
+                operation.city = null;
+            }
+            operation.validate();
+            this.updateOperationStatus(operationId);
+            this.updateValidationStatus();
+        }
+    }
+
+    handleDeleteOperation(operationId) {
+        campaignBuilder.removeOperation(operationId);
+        const operationElement = document.querySelector(`[data-operation-id="${operationId}"]`);
+        if (operationElement) {
+            operationElement.remove();
+        }
+        this.updateValidationStatus();
+    }
+
+    updateOperationStatus(operationId) {
+        const operation = campaignBuilder.getOperation(operationId);
+        const operationElement = document.querySelector(`[data-operation-id="${operationId}"]`);
+        if (operation && operationElement) {
+            const statusElement = operationElement.querySelector('.operation-status');
+            statusElement.className = `operation-status ${operation.isValid ? 'valid' : 'invalid'}`;
+            statusElement.textContent = operation.isValid ? '✓' : '!';
+        }
+    }
+
+    updateValidationStatus() {
+        const validation = campaignBuilder.validateCampaign();
+        const validationElement = document.getElementById('builder-validation');
+        
+        if (validation.errors.length > 0 || validation.warnings.length > 0) {
+            validationElement.style.display = 'block';
+            validationElement.innerHTML = `
+                ${validation.errors.length > 0 ? `
+                    <div class="validation-errors">
+                        <strong>Errors:</strong>
+                        <ul>${validation.errors.map(error => `<li>${error}</li>`).join('')}</ul>
+                    </div>
+                ` : ''}
+                ${validation.warnings.length > 0 ? `
+                    <div class="validation-warnings">
+                        <strong>Warnings:</strong>
+                        <ul>${validation.warnings.map(warning => `<li>${warning}</li>`).join('')}</ul>
+                    </div>
+                ` : ''}
+            `;
+        } else {
+            validationElement.style.display = 'none';
+        }
+    }
+
+    refreshBuilderUI() {
+        // Update campaign metadata
+        document.getElementById('campaign-name-input').value = campaignBuilder.campaign.name;
+        document.getElementById('campaign-description-input').value = campaignBuilder.campaign.description;
+        
+        // Clear and rebuild operations
+        const container = document.getElementById('operations-container');
+        container.innerHTML = '';
+        
+        campaignBuilder.campaign.operations.forEach(operation => {
+            this.renderOperation(operation);
+        });
+        
+        this.updateValidationStatus();
+    }
+
+    async handlePreviewCampaign() {
+        try {
+            const campaign = await campaignBuilder.exportCampaign();
+            this.showCampaignPreview(campaign);
+        } catch (error) {
+            console.error('Failed to preview campaign:', error);
+            this.showError(error.message);
+        }
+    }
+
+    showCampaignPreview(campaign) {
+        const modal = document.getElementById('builder-preview-modal');
+        const content = document.getElementById('preview-content');
+        
+        content.innerHTML = `
+            <div class="preview-campaign">
+                <h4>${campaign.name}</h4>
+                <p class="preview-description">${campaign.description}</p>
+                <div class="preview-operations">
+                    ${campaign.missions.map((mission, index) => `
+                        <div class="preview-operation">
+                            <h5>Operation ${index + 1}: ${mission.name}</h5>
+                            <div class="preview-details">
+                                <span class="preview-faction">Enemy: ${mission.faction}</span>
+                                <span class="preview-planet">Planet: ${mission.planet.name}</span>
+                                <span class="preview-difficulty">Difficulty: ${mission.difficulty.level} - ${mission.difficulty.name}</span>
+                                ${mission.city ? `<span class="preview-city">Target: ${mission.city.name}</span>` : ''}
+                                ${mission.enableFallback ? '<span class="preview-fallback">✓ Fallback enabled</span>' : ''}
+                            </div>
+                            ${mission.briefing ? `<p class="preview-briefing">${mission.briefing}</p>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        modal.style.display = 'flex';
+    }
+
+    handleClosePreview() {
+        document.getElementById('builder-preview-modal').style.display = 'none';
+    }
+
+    async handleStartCustomTour() {
+        try {
+            const campaign = await campaignBuilder.exportCampaign();
+            
+            // Check if stats mode should be enabled
+            const enableStats = confirm('Would you like to enable Stats Mode for this custom campaign? This will track squad member statistics throughout the tour.');
+            
+            if (enableStats) {
+                this.statsMode = true;
+                this.showStatsSetup(() => {
+                    this.startTourFromCampaign(campaign);
+                });
+            } else {
+                this.startTourFromCampaign(campaign);
+            }
+            
+        } catch (error) {
+            console.error('Failed to start custom tour:', error);
+            this.showError(error.message);
+        }
+    }
+
+    startTourFromCampaign(campaign) {
+        // Convert campaign to tour format and start
+        this.currentTour = {
+            ...campaign,
+            currentMissionIndex: 0,
+            isCustomCampaign: true
+        };
+        
+        // Close preview and builder
+        this.handleClosePreview();
+        this.handleBackToGenerator();
+        
+        // Start the tour
+        this.showCurrentMission();
+    }
+
+    async handleExportCustomCampaign() {
+        try {
+            const campaign = await campaignBuilder.exportCampaign();
+            this.downloadJSON(campaign, `${campaign.name.replace(/[^a-z0-9]/gi, '_')}_campaign.json`);
+        } catch (error) {
+            console.error('Failed to export campaign:', error);
+            this.showError(error.message);
+        }
+    }
+
+    handleImportCustomCampaign() {
+        document.getElementById('import-custom-file').click();
+    }
+
+    handleCustomFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const campaignData = JSON.parse(e.target.result);
+                campaignBuilder.importCampaign(campaignData);
+                this.refreshBuilderUI();
+                this.showSuccess('Campaign imported successfully!');
+            } catch (error) {
+                console.error('Failed to import campaign:', error);
+                this.showError('Failed to import campaign. Please check the file format.');
+            }
+        };
+        reader.readAsText(file);
+        
+        // Clear the input
+        event.target.value = '';
+    }
+
+    handleResetBuilder() {
+        if (confirm('Are you sure you want to reset the campaign builder? All current progress will be lost.')) {
+            campaignBuilder.reset();
+            this.refreshBuilderUI();
+        }
+    }
+
+    // Drag and drop handlers
+    handleDragStart(e, operationId) {
+        campaignBuilder.startDrag(operationId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.target.style.opacity = '0.5';
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    handleDrop(e, targetOperationId) {
+        e.preventDefault();
+        const draggedElement = document.querySelector('[style*="opacity: 0.5"]');
+        if (draggedElement) {
+            draggedElement.style.opacity = '';
+        }
+        
+        if (campaignBuilder.dropOperation(targetOperationId)) {
+            this.refreshBuilderUI();
+        }
+        
+        campaignBuilder.endDrag();
+    }
+
+    // Utility methods for Campaign Builder
+    showError(message) {
+        const errorSection = document.getElementById('error');
+        const errorMessage = document.getElementById('error-message');
+        if (errorSection && errorMessage) {
+            errorMessage.textContent = message;
+            errorSection.style.display = 'block';
+            setTimeout(() => {
+                errorSection.style.display = 'none';
+            }, 5000);
+        } else {
+            alert('Error: ' + message);
+        }
+    }
+
+    showSuccess(message) {
+        // Create a temporary success notification
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            z-index: 10000;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        `;
+        successDiv.textContent = message;
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+            successDiv.remove();
+        }, 3000);
+    }
+
+    downloadJSON(data, filename) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+
 }
 
 // Initialize the app

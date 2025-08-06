@@ -7,6 +7,7 @@ class ApiService {
             warStatus: 'https://helldiverstrainingmanual.com/api/v1/war/status',
             warCampaign: 'https://helldiverstrainingmanual.com/api/v1/war/campaign',
             warInfo: 'https://helldiverstrainingmanual.com/api/v1/war/info',
+            majorOrders: 'https://helldiverstrainingmanual.com/api/v1/war/major-orders',
             companionApi: 'https://helldiverscompanion.com/api/hell-divers-2-api/get-all-api-data'
         };
         this.cache = {
@@ -14,13 +15,14 @@ class ApiService {
             warStatus: { data: null, timestamp: 0 },
             warCampaign: { data: null, timestamp: 0 },
             warInfo: { data: null, timestamp: 0 },
+            majorOrders: { data: null, timestamp: 0 },
             companionData: { data: null, timestamp: 0 },
             duration: 5 * 60 * 1000 // 5 minutes
         };
         
         this.autoRefresh = {
             enabled: true,
-            interval: 3 * 60 * 1000,
+            interval: 5 * 60 * 1000, // 5 minutes
             timers: new Map(),
             callbacks: new Map()
         };
@@ -301,7 +303,7 @@ class ApiService {
                 this.startAutoRefresh('warStatus', this.fetchWarStatusDataInternal);
             }
             
-            console.log('✅ Fetched war status data from API:', data);
+            console.log('✅ Fetched war status data from API');
             return data;
             
         } catch (error) {
@@ -419,6 +421,322 @@ class ApiService {
         }
     }
 
+    async fetchMajorOrderData(forceRefresh = false) {
+        return this.fetchMajorOrderDataInternal(forceRefresh);
+    }
+
+    async fetchMajorOrderDataInternal(forceRefresh = false) {
+        try {
+            const now = Date.now();
+            if (!forceRefresh && this.cache.majorOrders.data && (now - this.cache.majorOrders.timestamp) < this.cache.duration) {
+                console.log('Using cached major order data');
+                return this.cache.majorOrders.data;
+            }
+
+            console.log('Fetching fresh major order data from API...');
+            const proxiedUrl = this.baseUrls.corsProxy + encodeURIComponent(this.baseUrls.majorOrders);
+            console.log('Proxied major order URL:', proxiedUrl);
+            
+            const response = await this.fetchWithRetry(proxiedUrl, 3);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const proxyResponse = await response.json();
+            const data = JSON.parse(proxyResponse.contents);
+            
+            this.cache.majorOrders.data = data;
+            this.cache.majorOrders.timestamp = now;
+            
+            if (this.autoRefresh.enabled && !this.autoRefresh.timers.has('majorOrders')) {
+                this.startAutoRefresh('majorOrders', this.fetchMajorOrderDataInternal);
+            }
+            
+            console.log('✅ Fetched major order data from API:', data);
+            return data;
+            
+        } catch (error) {
+            console.warn('Major order API fetch failed:', error.message);
+            return null;
+        }
+    }
+
+    async getMajorOrderDetails() {
+        console.log('🚀 getMajorOrderDetails() called');
+        
+        const majorOrderData = await this.fetchMajorOrderData();
+        const companionData = await this.fetchCompanionData();
+        
+        console.log('📡 MAJOR ORDER API DEBUG:');
+        console.log('majorOrderData:', majorOrderData);
+        console.log('companionData:', companionData);
+        console.log('companionData.assignment:', companionData?.assignment);
+        
+        if (!majorOrderData && !companionData?.assignment) {
+            console.log('❌ RETURNING NULL - NO MAJOR ORDER DATA');
+            return null;
+        }
+        
+        // Try to get Major Order from companion API first (more reliable)
+        if (companionData?.assignment) {
+            console.log('✅ Using companion API for Major Order');
+            const assignment = companionData.assignment;
+            
+            const details = {
+                title: assignment.setting?.overrideTitle || 'MAJOR ORDER',
+                briefing: assignment.setting?.overrideBrief || assignment.briefing || '',
+                tasks: assignment.tasks || [],
+                reward: assignment.reward || { amount: 0 },
+                expiresIn: assignment.expiresIn || 0,
+                planetIndices: [],
+                factions: []
+            };
+            
+            // Extract factions from the briefing text
+            const briefingText = details.briefing.toLowerCase();
+            if (briefingText.includes('terminid') || briefingText.includes('bug')) {
+                details.factions.push('Terminids');
+            }
+            if (briefingText.includes('automaton') || briefingText.includes('bot') || briefingText.includes('robot')) {
+                details.factions.push('Automatons');
+            }
+            if (briefingText.includes('illuminate') || briefingText.includes('squid')) {
+                details.factions.push('Illuminate');
+            }
+            
+            // Extract planet indices from liberation tasks only (task type 3)
+            if (assignment.tasks) {
+                assignment.tasks.forEach(task => {
+                    // Only check task type 3 (liberation tasks) where planet index is at values[2]
+                    if (task.type === 3 && task.values && task.values.length > 2) {
+                        const planetIndex = task.values[2];
+                        if (typeof planetIndex === 'number' && planetIndex >= 0 && !details.planetIndices.includes(planetIndex)) {
+                            console.log(`Found potential planet index: ${planetIndex} from task type 3`);
+                            details.planetIndices.push(planetIndex);
+                        }
+                    }
+                });
+            }
+            
+            // Always try to extract sector name from briefing (regardless of planet indices)
+            console.log('🔍 DEBUGGING SECTOR EXTRACTION:');
+            console.log('📝 Briefing text:', JSON.stringify(details.briefing));
+            console.log('📝 Briefing length:', details.briefing?.length);
+            console.log('📝 Briefing type:', typeof details.briefing);
+            
+            // Test the regex against the known text
+            const knownText = "Liberate the Nanos Sector, and destroy Automaton Conscripts with the Railcannon Stratagem to further secure New Aspiration City.";
+            const testMatch = knownText.match(/(?:liberate\s+(?:the\s+)?)?(\w+)\s+sector/i);
+            console.log('✅ Test regex against known text:', testMatch ? `Found "${testMatch[1]}"` : 'NO MATCH');
+            
+            if (!details.briefing) {
+                console.log('❌ Briefing is empty/undefined');
+                return details;
+            }
+            
+            // Pattern 1: "Liberate the Nanos Sector" or "Nanos Sector"
+            let sectorMatch = details.briefing.match(/(?:liberate\s+(?:the\s+)?)?(\w+)\s+sector/i);
+            console.log('🎯 Pattern 1 result:', sectorMatch ? `Found "${sectorMatch[1]}"` : 'NO MATCH');
+            
+            if (!sectorMatch) {
+                // Pattern 2: "in the Nanos sector" 
+                sectorMatch = details.briefing.match(/in\s+(?:the\s+)?(\w+)\s+sector/i);
+                console.log('🎯 Pattern 2 result:', sectorMatch ? `Found "${sectorMatch[1]}"` : 'NO MATCH');
+            }
+            
+            if (!sectorMatch) {
+                // Pattern 3: Just look for any word before "sector"
+                sectorMatch = details.briefing.match(/(\w+)\s+sector/i);
+                console.log('🎯 Pattern 3 result:', sectorMatch ? `Found "${sectorMatch[1]}"` : 'NO MATCH');
+            }
+            
+            if (sectorMatch) {
+                details.targetSector = sectorMatch[1];
+                console.log(`✅ SECTOR EXTRACTED: "${details.targetSector}"`);
+            } else {
+                console.log('❌ NO SECTOR FOUND IN BRIEFING');
+            }
+            
+            return details;
+        }
+        
+        // Fallback to major order endpoint
+        if (majorOrderData && majorOrderData.length > 0) {
+            console.log('✅ Using major-orders endpoint for Major Order');
+            const order = majorOrderData[0];
+            console.log('📋 Raw major order data:', order);
+            
+            const briefing = order.setting?.overrideBrief || order.briefing || order.setting?.taskDescription || '';
+            console.log('📝 Extracted briefing:', briefing);
+            
+            const details = {
+                title: order.setting?.overrideTitle || 'MAJOR ORDER',
+                briefing: briefing,
+                tasks: order.tasks || [],
+                reward: order.reward || { amount: 0 },
+                expiresIn: order.expiresIn || 0,
+                planetIndices: [],
+                factions: []
+            };
+            
+            // Extract factions from the briefing text
+            const briefingText = details.briefing.toLowerCase();
+            if (briefingText.includes('terminid') || briefingText.includes('bug')) {
+                details.factions.push('Terminids');
+            }
+            if (briefingText.includes('automaton') || briefingText.includes('bot') || briefingText.includes('robot')) {
+                details.factions.push('Automatons');
+            }
+            if (briefingText.includes('illuminate') || briefingText.includes('squid')) {
+                details.factions.push('Illuminate');
+            }
+            
+            // Extract planet indices from liberation tasks
+            if (order.tasks) {
+                order.tasks.forEach(task => {
+                    if (task.type === 3 && task.values && task.values.length > 2) {
+                        const planetIndex = task.values[2];
+                        if (typeof planetIndex === 'number' && !details.planetIndices.includes(planetIndex)) {
+                            console.log(`Found potential planet index: ${planetIndex} from task type 3`);
+                            details.planetIndices.push(planetIndex);
+                        }
+                    }
+                });
+            }
+            
+            // Always try to extract sector name from briefing (regardless of planet indices)
+            try {
+                console.log('🔍 DEBUGGING SECTOR EXTRACTION (major-orders endpoint):');
+                console.log('📝 Briefing text:', JSON.stringify(details.briefing));
+                
+                if (details.briefing) {
+                    // Pattern 1: "Liberate the Nanos Sector" or "Nanos Sector"
+                    let sectorMatch = details.briefing.match(/(?:liberate\s+(?:the\s+)?)?(\w+)\s+sector/i);
+                    console.log('🎯 Pattern 1 result:', sectorMatch ? `Found "${sectorMatch[1]}"` : 'NO MATCH');
+                    
+                    if (!sectorMatch) {
+                        // Pattern 2: "in the Nanos sector" 
+                        sectorMatch = details.briefing.match(/in\s+(?:the\s+)?(\w+)\s+sector/i);
+                        console.log('🎯 Pattern 2 result:', sectorMatch ? `Found "${sectorMatch[1]}"` : 'NO MATCH');
+                    }
+                    
+                    if (!sectorMatch) {
+                        // Pattern 3: Just look for any word before "sector"
+                        sectorMatch = details.briefing.match(/(\w+)\s+sector/i);
+                        console.log('🎯 Pattern 3 result:', sectorMatch ? `Found "${sectorMatch[1]}"` : 'NO MATCH');
+                    }
+                    
+                    if (sectorMatch) {
+                        details.targetSector = sectorMatch[1];
+                        console.log(`✅ SECTOR EXTRACTED: "${details.targetSector}"`);
+                    } else {
+                        console.log('❌ NO SECTOR FOUND IN BRIEFING');
+                    }
+                } else {
+                    console.log('❌ Briefing is empty/undefined');
+                }
+            } catch (error) {
+                console.error('❌ Error in sector extraction:', error);
+            }
+            
+            return details;
+        }
+        
+        return null;
+    }
+
+    async getMajorOrderPlanets() {
+        const majorOrderDetails = await this.getMajorOrderDetails();
+        if (!majorOrderDetails) {
+            return [];
+        }
+        
+        // Use exactly the same approach as the working campaign generator
+        const gameData = await this.getAllGameData();
+        const allPlanets = gameData.planets;
+        
+        // First priority: Use specific planet indices from Major Order tasks
+        if (majorOrderDetails.planetIndices && majorOrderDetails.planetIndices.length > 0) {
+            const targetPlanets = majorOrderDetails.planetIndices
+                .map(index => allPlanets.find(planet => planet.id === index))
+                .filter(planet => planet && this.getCurrentEnemy(planet)) // Only include enemy planets
+                .filter(Boolean);
+            
+            // Only use planet indices if they result in valid enemy planets
+            if (targetPlanets.length > 0) {
+                console.log(`Found ${targetPlanets.length} Major Order target planets:`, targetPlanets.map(p => p.name));
+                // Sort by player count (highest first) to prioritize active battlefronts
+                targetPlanets.sort((a, b) => (b.players || 0) - (a.players || 0));
+                return targetPlanets;
+            } else {
+                console.log('Planet indices found but none mapped to valid enemy planets, falling back to sector/faction filtering');
+            }
+        }
+        
+        // Second priority: Use sector filtering if no specific planets found
+        const enemyPlanets = this.getEnemyPlanets(allPlanets);
+        let majorOrderPlanets = enemyPlanets;
+        
+        console.log(`Major Order Details:`, {
+            targetSector: majorOrderDetails.targetSector,
+            factions: majorOrderDetails.factions,
+            planetIndices: majorOrderDetails.planetIndices
+        });
+        
+        if (majorOrderDetails.targetSector) {
+            console.log(`Attempting sector filtering for: "${majorOrderDetails.targetSector}"`);
+            console.log('Sample enemy planet sectors:', enemyPlanets.slice(0, 5).map(p => ({
+                name: p.name,
+                sector: p.sector
+            })));
+            
+            const sectorPlanets = enemyPlanets.filter(planet => {
+                if (!planet.sector) return false;
+                
+                const planetSector = planet.sector.toLowerCase();
+                const targetSector = majorOrderDetails.targetSector.toLowerCase();
+                
+                // Try multiple matching strategies
+                const exactMatch = planetSector === targetSector;
+                const includesMatch = planetSector.includes(targetSector);
+                const reverseIncludesMatch = targetSector.includes(planetSector);
+                
+                const match = exactMatch || includesMatch || reverseIncludesMatch;
+                
+                if (match) {
+                    console.log(`Sector match found: "${planet.name}" in "${planet.sector}" matches "${majorOrderDetails.targetSector}"`);
+                }
+                
+                return match;
+            });
+            
+            if (sectorPlanets.length > 0) {
+                majorOrderPlanets = sectorPlanets;
+                console.log(`✅ Found ${sectorPlanets.length} planets in ${majorOrderDetails.targetSector} sector`);
+            } else {
+                console.log(`❌ No planets found in ${majorOrderDetails.targetSector} sector, falling back to faction filtering`);
+            }
+        }
+        
+        // Third priority: filter by faction (separate if statement so it can be fallback)
+        if (majorOrderPlanets === enemyPlanets && majorOrderDetails.factions && majorOrderDetails.factions.length > 0) {
+            console.log(`Using faction filtering for: ${majorOrderDetails.factions[0]}`);
+            const factionPlanets = enemyPlanets.filter(planet => 
+                this.getCurrentEnemy(planet) === majorOrderDetails.factions[0]
+            );
+            if (factionPlanets.length > 0) {
+                majorOrderPlanets = factionPlanets;
+                console.log(`Found ${majorOrderPlanets.length} planets for faction: ${majorOrderDetails.factions[0]}`);
+            }
+        }
+        
+        // Sort by player count (highest first) to prioritize active battlefronts
+        majorOrderPlanets.sort((a, b) => (b.players || 0) - (a.players || 0));
+        
+        return majorOrderPlanets;
+    }
+
     capitalizeWords(str) {
         if (!str) return '';
         return str.split(/[-_\s]/).map(word => 
@@ -497,7 +815,7 @@ class ApiService {
     }
 
     getCurrentEnemy(planet) {
-        const ownerId = planet.currentOwner;
+        const ownerId = planet.currentOwner || planet.owner;
         let factionName;
         
         if (typeof ownerId === 'string') {
@@ -506,7 +824,7 @@ class ApiService {
             factionName = this.factionMap[ownerId] || "Unknown";
         }
         
-        if (factionName === "Humans" || factionName === "Unknown") {
+        if (factionName === "Humans" || factionName === "Unknown" || ownerId === 1) {
             return null;
         }
         
@@ -822,9 +1140,12 @@ class ApiService {
         
         console.log('War campaign data:', warCampaign);
         
-        if (warStatus && warStatus.planets) {
+        // Check both possible field names for war status planets
+        const warStatusPlanets = warStatus?.planets || warStatus?.planetStatus;
+        
+        if (warStatus && warStatusPlanets) {
             const statusMap = new Map();
-            warStatus.planets.forEach(planet => {
+            warStatusPlanets.forEach(planet => {
                 statusMap.set(planet.index, planet);
             });
             
@@ -835,6 +1156,7 @@ class ApiService {
                     planet.liberation = status.liberation;
                     planet.health = status.health;
                     planet.maxHealth = status.maxHealth;
+                    planet.players = status.players || 0;
                 }
             });
         }
@@ -937,6 +1259,8 @@ class ApiService {
         this.cache.warCampaign.timestamp = 0;
         this.cache.warInfo.data = null;
         this.cache.warInfo.timestamp = 0;
+        this.cache.majorOrders.data = null;
+        this.cache.majorOrders.timestamp = 0;
         this.cache.companionData.data = null;
         this.cache.companionData.timestamp = 0;
         console.log('🗑️ Cache cleared - will fetch fresh data');
@@ -1040,11 +1364,144 @@ class ApiService {
         if (this.cache.warCampaign.data) {
             this.startAutoRefresh('warCampaign', this.fetchWarCampaignDataInternal);
         }
+        if (this.cache.majorOrders.data) {
+            this.startAutoRefresh('majorOrders', this.fetchMajorOrderDataInternal);
+        }
         if (this.cache.companionData.data) {
             this.startAutoRefresh('companionData', this.fetchCompanionDataInternal);
         }
     }
     
+    // Campaign Builder specific methods
+    getPlanetsByFactionForBuilder(faction) {
+        // Get planets for a specific faction for campaign builder
+        const allPlanets = this.cache.planets.data || this.fallbackPlanets;
+        return this.getPlanetsByFaction(allPlanets, faction);
+    }
+
+    async getAvailableFactionsAsync() {
+        const gameData = await this.getAllGameData();
+        return this.getAvailableFactions(gameData.planets);
+    }
+
+    async getPlanetActiveRegionsById(planetId) {
+        const warStatusData = await this.fetchWarStatusData();
+        return await this.getPlanetActiveRegions(planetId, warStatusData);
+    }
+
+    async getRandomFallbackPlanet(originalPlanet, faction) {
+        const gameData = await this.getAllGameData();
+        const factionPlanets = this.getPlanetsByFaction(gameData.planets, faction);
+        
+        if (factionPlanets.length === 0) {
+            return null;
+        }
+        
+        // Try to find a planet with the same biome group
+        const originalBiomeGroup = this.getBiomeGroup(originalPlanet);
+        if (originalBiomeGroup) {
+            const sameBiomeGroupPlanets = factionPlanets.filter(planet => 
+                planet.id !== originalPlanet.id && 
+                this.getBiomeGroup(planet) === originalBiomeGroup
+            );
+            
+            if (sameBiomeGroupPlanets.length > 0) {
+                return sameBiomeGroupPlanets[Math.floor(Math.random() * sameBiomeGroupPlanets.length)];
+            }
+        }
+        
+        // Try same biome name
+        const originalBiome = this.getPlanetBiome(originalPlanet);
+        const sameBiomePlanets = factionPlanets.filter(planet => 
+            planet.id !== originalPlanet.id && 
+            this.getPlanetBiome(planet) === originalBiome
+        );
+        
+        if (sameBiomePlanets.length > 0) {
+            return sameBiomePlanets[Math.floor(Math.random() * sameBiomePlanets.length)];
+        }
+        
+        // Fallback to any available planet of the same faction
+        const otherPlanets = factionPlanets.filter(planet => planet.id !== originalPlanet.id);
+        if (otherPlanets.length > 0) {
+            return otherPlanets[Math.floor(Math.random() * otherPlanets.length)];
+        }
+        
+        return null;
+    }
+
+    async validatePlanetAvailability(planetId, faction) {
+        const gameData = await this.getAllGameData();
+        const planet = gameData.planets.find(p => p.id === planetId);
+        
+        if (!planet) {
+            return { isAvailable: false, reason: 'Planet not found' };
+        }
+        
+        if (planet.disabled) {
+            return { isAvailable: false, reason: 'Planet is disabled' };
+        }
+        
+        const currentEnemy = this.getCurrentEnemy(planet);
+        if (currentEnemy !== faction) {
+            return { 
+                isAvailable: false, 
+                reason: `Planet is controlled by ${currentEnemy || 'Humans'}, not ${faction}` 
+            };
+        }
+        
+        return { isAvailable: true, planet: planet };
+    }
+
+    async getCitiesForPlanet(planetId) {
+        try {
+            // First try to get regions from companion data
+            const companionData = await this.fetchCompanionData();
+            if (companionData && companionData.planets_data && companionData.planets_data[planetId]) {
+                const planetData = companionData.planets_data[planetId];
+                if (planetData.regions) {
+                    return planetData.regions
+                        .filter(region => region.owner !== 1) // Only enemy-controlled regions
+                        .map(region => ({
+                            id: region.index,
+                            name: `Region ${region.index}`,
+                            owner: region.owner,
+                            ownerFaction: this.getFactionName(region.owner),
+                            health: region.health,
+                            maxHealth: region.max_health,
+                            isAvailable: region.owner !== 1
+                        }));
+                }
+            }
+            
+            // Fallback to war status data
+            const regions = await this.getPlanetActiveRegions(planetId);
+            return regions.map(region => ({
+                id: region.regionIndex,
+                name: `Region ${region.regionIndex}`,
+                owner: region.owner,
+                ownerFaction: region.ownerFaction,
+                health: region.health,
+                maxHealth: region.maxHealth,
+                isAvailable: region.isAvailable
+            }));
+        } catch (error) {
+            console.warn(`Failed to get cities for planet ${planetId}:`, error);
+            return [];
+        }
+    }
+
+    // Helper method to get all planets with their current status
+    async getAllPlanetsWithStatus() {
+        const gameData = await this.getAllGameData();
+        return gameData.planets.map(planet => ({
+            ...planet,
+            enemy: this.getCurrentEnemy(planet),
+            biome: this.getPlanetBiome(planet),
+            biomeGroup: this.getBiomeGroup(planet)
+        }));
+    }
+
     destroy() {
         this.stopAllAutoRefresh();
         console.log('📤 ApiService destroyed - all timers cleared');

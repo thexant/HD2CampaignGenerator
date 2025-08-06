@@ -31,9 +31,9 @@ class CityMappings {
                 { index: 1, name: "Laelia" }
             ],
             "vernen_wells": [
-                { index: 0, name: "Blackvein Mines" },
+                { index: 0, name: "Anne's Vigil" },
                 { index: 1, name: "Benevolence" },
-                { index: 2, name: "Anne's Vigil" }
+                { index: 2, name: "Blackvein Mines" }
             ],
             "darius_ii": [
                 { index: 0, name: "Buju" }
@@ -530,3 +530,4 @@ class CityMappings {
 
 // Export for use in other modules
 const cityMappings = new CityMappings();
+window.cityMappings = cityMappings;

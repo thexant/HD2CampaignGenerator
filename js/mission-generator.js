@@ -35,7 +35,8 @@ class MissionGenerator {
         const selectedRegion = this.selectRegionForMission(finalPlanet, biome, forceCityMission);
         const environment = selectedRegion ? "city" : "planet";
         
-        const primaryObjective = this.selectPrimaryObjective(faction, missionIndex, totalMissions, difficulty.level, environment, finalPlanet.isDefense);
+        // For operations-based system, create generic operation objective
+        const primaryObjective = this.createOperationObjective(difficulty.level, environment, finalPlanet.isDefense);
         const secondaryObjectives = this.selectSecondaryObjectives(2 + Math.floor(Math.random() * 2), environment, finalPlanet.isDefense, difficulty.level);
         
         // 20% chance to add a modifier
@@ -43,7 +44,7 @@ class MissionGenerator {
         
         const mission = {
             number: missionIndex + 1,
-            name: primaryObjective.name || `Mission ${missionIndex + 1}`,
+            name: primaryObjective.name || `Operation ${missionIndex + 1}`,
             planet: {
                 name: finalPlanet.name,
                 sector: finalPlanet.sector || "Unknown Sector",
@@ -78,6 +79,60 @@ class MissionGenerator {
         }
         
         return mission;
+    }
+
+    createOperationObjective(difficulty, environment, isDefense = false) {
+        const operationType = isDefense ? "Defense" : "Liberation";
+        const locationText = environment === "city" ? "urban sectors" : "contested territory";
+        
+        // Generate thematic operation descriptions
+        const descriptions = this.getThematicOperationDescription(difficulty, operationType, environment);
+        
+        return {
+            id: `operation_difficulty_${difficulty}`,
+            name: descriptions.name,
+            description: descriptions.description,
+            type: "operation",
+            difficulty: difficulty,
+            environment: environment,
+            isDefense: isDefense
+        };
+    }
+
+    getThematicOperationDescription(difficulty, operationType, environment) {
+        const isCity = environment === "city";
+        const difficultyNames = {
+            1: "Trivial", 2: "Easy", 3: "Medium", 4: "Challenging", 5: "Hard",
+            6: "Extreme", 7: "Suicide Mission", 8: "Impossible", 9: "Helldive", 10: "Super Helldive"
+        };
+        
+        const difficultyName = difficultyNames[difficulty] || `Difficulty ${difficulty}`;
+        
+        if (operationType === "Defense") {
+            const defenseDescriptions = [
+                "Hold the line against overwhelming enemy forces. Democracy depends on your unwavering resolve.",
+                "Defend critical Super Earth assets from enemy assault. Failure is not an option, Helldiver.",
+                "Repel the enemy offensive and maintain our strategic position. Show them the strength of Managed Democracy.",
+                "Stand firm against the tide of tyranny. Every second you hold is a victory for freedom.",
+                "Protect our liberated territory from enemy recapture. Liberty's light must not be extinguished."
+            ];
+            return {
+                name: `${difficultyName} Defense Operation`,
+                description: defenseDescriptions[Math.floor(Math.random() * defenseDescriptions.length)]
+            };
+        } else {
+            const liberationDescriptions = [
+                "Reclaim this Super Earth colony from enemy occupation. Show these invaders that our worlds belong to Democracy.",
+                "Drive the enemy forces from our rightful territory and restore Super Earth's sovereign rule.",
+                "Liberate our colonists from the tyrannical grip of alien oppressors. Bring our people home to freedom.",
+                "Take back what was stolen from Super Earth. Every liberated world strengthens Managed Democracy.",
+                "Retake this conquered territory and reestablish the righteous order of Super Earth civilization."
+            ];
+            return {
+                name: `${difficultyName} Liberation Operation`,
+                description: liberationDescriptions[Math.floor(Math.random() * liberationDescriptions.length)]
+            };
+        }
     }
 
     selectModifier() {
@@ -554,34 +609,6 @@ class MissionGenerator {
         return mission;
     }
 
-    rerollMissionObjectives(existingMission) {
-        // Keep the same planet, faction, and difficulty - only change objectives
-        const faction = existingMission.faction;
-        const difficulty = existingMission.difficulty.level;
-        const environment = existingMission.location ? "city" : "planet";
-        const isDefense = existingMission.isDefense;
-        
-        // Generate new primary objective
-        const newPrimaryObjective = this.selectPrimaryObjective(faction, 0, 1, difficulty, environment, isDefense);
-        
-        // Generate new secondary objectives 
-        const newSecondaryObjectives = this.selectSecondaryObjectives(2 + Math.floor(Math.random() * 2), environment, isDefense, difficulty);
-        
-        // Optionally generate new modifier
-        const newModifier = this.selectModifier();
-        
-        // Create updated mission with new objectives but same core details
-        const updatedMission = {
-            ...existingMission,
-            name: newPrimaryObjective.name || existingMission.name,
-            primaryObjective: newPrimaryObjective,
-            secondaryObjectives: newSecondaryObjectives,
-            modifier: newModifier
-        };
-        
-        console.log(`Re-rolled mission objectives for ${existingMission.planet.name} - New primary: ${newPrimaryObjective.name}`);
-        return updatedMission;
-    }
 }
 
 // Initialize missionGenerator as a global variable to avoid lexical declaration issues

@@ -13,22 +13,24 @@ class CampaignGenerator {
         this.isGenerating = true;
         
         try {
+            let planets;
             
-            console.log('Fetching game data from API...');
-            const gameData = await apiService.getAllGameData();
-            const planets = gameData.planets;
-            
-            console.log('Received planets data:', planets.length, 'planets');
-            console.log('Sample planet:', planets[0]);
+            // If we have themed planets (like Major Order), use those directly
+            if (preferences.themedPlanets && preferences.themedPlanets.length > 0) {
+                planets = preferences.themedPlanets;
+                console.log(`Using ${planets.length} themed planets for campaign generation`);
+            } else {
+                console.log('Fetching game data from API...');
+                const gameData = await apiService.getAllGameData();
+                planets = gameData.planets;
+                console.log('Received planets data:', planets.length, 'planets');
+            }
             
             if (!planets || planets.length === 0) {
                 throw new Error('No planet data available');
             }
 
-            
             const campaignLength = this.determineCampaignLength(preferences.length);
-            
-            
             const missions = await this.generateMissions(planets, campaignLength, preferences);
             
             if (missions.length === 0) {
@@ -63,27 +65,28 @@ class CampaignGenerator {
         const missions = [];
         const usedPlanets = new Set();
         
+        // If planets are already themed/filtered, use them directly, otherwise filter to enemy planets
+        const availablePlanets = (preferences.themedPlanets && preferences.themedPlanets.length > 0) 
+            ? planets  // planets are already the themed planets from generateCampaign
+            : apiService.getEnemyPlanets(planets);
         
-        const enemyPlanets = apiService.getEnemyPlanets(planets);
+        console.log('Available planets for missions:', availablePlanets.length);
         
-        console.log('Enemy planets found:', enemyPlanets.length);
-        console.log('Sample enemy planet:', enemyPlanets[0]);
-        
-        if (enemyPlanets.length === 0) {
+        if (availablePlanets.length === 0) {
             console.log('All planets data for debugging:', planets.map(p => ({
                 name: p.name,
                 currentOwner: p.currentOwner,
                 enemy: apiService.getCurrentEnemy(p)
             })));
-            throw new Error('No enemy planets available for missions');
+            throw new Error('No planets available for missions');
         }
 
        
-        const factionStrategy = this.determineFactionStrategy(preferences.faction, enemyPlanets);
+        const factionStrategy = this.determineFactionStrategy(preferences.faction, availablePlanets);
         
         for (let i = 0; i < campaignLength; i++) {
             const planet = this.selectPlanetForMission(
-                enemyPlanets, 
+                availablePlanets, 
                 usedPlanets, 
                 factionStrategy, 
                 i, 
@@ -104,7 +107,7 @@ class CampaignGenerator {
             missions.push(adjustedMission);
             
             
-            if (enemyPlanets.length > campaignLength) {
+            if (availablePlanets.length > campaignLength) {
                 usedPlanets.add(planet.id);
             }
         }

@@ -435,84 +435,29 @@ const MISSION_TYPES = {
 
     SECONDARY_OBJECTIVES: [
         {
-            id: "collect_common_samples",
-            name: "Collect Common Samples",
-            description: "Collect at least {10-20} Common Samples",
-            getDescription: (difficulty = 1) => {
-                const baseAmount = Math.min(8 + difficulty * 2, 20);
-                const variation = Math.floor(Math.random() * 5);
-                return `Collect at least ${baseAmount + variation} Common Samples`;
-            }
-        },
-        {
-            id: "collect_rare_samples", 
-            name: "Collect Rare Samples",
-            description: "Collect at least {4-12} Rare Samples",
-            getDescription: (difficulty = 4) => {
-                const baseAmount = Math.min(2 + (difficulty - 3) * 2, 12);
-                const variation = Math.floor(Math.random() * 3);
-                return `Collect at least ${baseAmount + variation} Rare Samples`;
-            }
-        },
-        {
-            id: "collect_super_samples",
-            name: "Collect Super Samples", 
-            description: "Collect at least {2-6} Super Samples",
-            getDescription: (difficulty = 6) => {
-                const baseAmount = Math.min(1 + (difficulty - 5), 6);
-                const variation = Math.floor(Math.random() * 2);
-                return `Collect at least ${baseAmount + variation} Super Samples`;
-            }
-        },
-        {
-            id: "complete_side_objectives",
-            name: "Complete Side Objectives",
-            description: "Complete all optional objectives encountered during the mission"
-        },
-        {
-            id: "extract_all_helldivers",
-            name: "Extract All Helldivers",
-            description: "All Helldivers must extract"
-        },
-        {
-            id: "low_casualty_mission",
-            name: "Low Casualty Mission",
-            description: "Complete mission with fewer than {2-4} deaths per Helldiver",
-            getDescription: () => `Complete mission with fewer than ${2 + Math.floor(Math.random() * 3)} deaths per Helldiver`
-        },
-        {
-            id: "time_limit_completion",
-            name: "Time Limit Completion", 
-            description: "Complete the mission with {12-20} or more minutes remaining",
-            getDescription: () => `Complete the mission with ${12 + Math.floor(Math.random() * 9)} or more minutes remaining`
-        },
-        {
-            id: "fast_extraction",
-            name: "Fast Extraction",
-            description: "Reach extraction zone within {3-7} minutes of completing final objective",
-            getDescription: () => `Reach extraction zone within ${3 + Math.floor(Math.random() * 5)} minutes of completing final objective`
-        },
-        {
-            id: "stratagem_conservation",
-            name: "Stratagem Conservation",
-            description: "Call in fewer than {15-25} stratagems total per Helldiver",
-            getDescription: () => `Use fewer than ${15 + Math.floor(Math.random() * 11)} stratagem call-ins total per Helldiver`
-        },
-        {
             id: "stealth_approach",
-            name: "Stealth Approach", 
-            description: "Complete first objective without triggering enemy patrols"
+            name: "Stealth Approach",
+            description: "Avoid triggering enemy patrols when possible during the operation"
         },
         {
-            id: "perfect_accuracy",
-            name: "Perfect Accuracy",
-            description: "Complete mission with {75-85}% or higher accuracy rating",
-            getDescription: () => `Complete mission with ${75 + Math.floor(Math.random() * 11)}% or higher accuracy rating`
+            id: "heavy_weapons_focus",
+            name: "Heavy Weapons Focus",
+            description: "Prioritize anti-tank and support weapons for this operation"
         },
         {
-            id: "team_coordination", 
-            name: "Team Coordination",
-            description: "No friendly fire incidents throughout the mission"
+            id: "defensive_stratagems",
+            name: "Defensive Stratagems",
+            description: "Use defensive stratagems like sentries, mines, and barriers"
+        },
+        {
+            id: "all_extract",
+            name: "All Extract",
+            description: "Ensure all Helldivers extract from each mission"
+        },
+        {
+            id: "conserve_reinforcements",
+            name: "Conserve Reinforcements", 
+            description: "Minimize the use of reinforcement beacons during the operation"
         }
     ],
 
@@ -520,61 +465,31 @@ const MISSION_TYPES = {
         {
             id: "zero_asset_damage",
             name: "Zero Asset Damage",
-            description: "Prevent all critical assets from taking any damage",
+            description: "Prevent critical assets from taking damage during defensive missions",
             environment: ["planet", "city"]
         },
         {
-            id: "eliminate_wave_commanders",
-            name: "Eliminate Wave Commanders",
-            description: "Kill at least {4-8} enemy commanders during the defense",
-            getDescription: () => `Kill at least ${4 + Math.floor(Math.random() * 5)} enemy commanders during the defense`,
+            id: "defensive_stratagems_only",
+            name: "Defensive Stratagems Focus",
+            description: "Use primarily defensive stratagems like sentries, mines, and barriers",
             environment: ["planet", "city"]
         },
         {
-            id: "minimal_defense_casualties",
-            name: "Minimal Defense Casualties",
-            description: "Complete defense with fewer than {1-3} deaths per Helldiver",
-            getDescription: () => `Complete defense with fewer than ${1 + Math.floor(Math.random() * 3)} deaths per Helldiver`,
+            id: "priority_heavy_targets",
+            name: "Priority Heavy Targets",
+            description: "Focus fire on heavy units and commanders first during defense waves",
             environment: ["planet", "city"]
         },
         {
-            id: "maintain_perimeter_integrity",
-            name: "Maintain Perimeter Integrity",
-            description: "No enemies breach the inner defensive perimeter",
+            id: "stay_together",
+            name: "Stay Together", 
+            description: "Maintain close squad formations during defensive actions",
             environment: ["planet", "city"]
         },
         {
-            id: "efficient_stratagem_defense",
-            name: "Efficient Stratagem Defense",
-            description: "Use fewer than {12-20} offensive stratagems during entire defense",
-            getDescription: () => `Use fewer than ${12 + Math.floor(Math.random() * 9)} offensive stratagems during entire defense`,
-            environment: ["planet", "city"]
-        },
-        {
-            id: "rapid_threat_elimination",
-            name: "Rapid Threat Elimination",
-            description: "Eliminate all heavy units within {20-40} seconds of detection",
-            getDescription: () => `Eliminate all heavy units within ${20 + Math.floor(Math.random() * 21)} seconds of detection`,
-            environment: ["planet", "city"]
-        },
-        {
-            id: "defensive_coordination",
-            name: "Defensive Coordination", 
-            description: "All Helldivers stay within {40-60}m of defensive objective at all times",
-            getDescription: () => `All Helldivers stay within ${40 + Math.floor(Math.random() * 21)}m of defensive objective at all times`,
-            environment: ["planet", "city"]
-        },
-        {
-            id: "ammunition_conservation",
-            name: "Ammunition Conservation",
-            description: "Complete defense using only primary weapons (no support weapons)",
-            environment: ["planet", "city"]
-        },
-        {
-            id: "early_warning_system",
-            name: "Early Warning System",
-            description: "Spot and call out all incoming enemy waves {8-15}+ seconds before contact",
-            getDescription: () => `Spot and call out all incoming enemy waves ${8 + Math.floor(Math.random() * 8)}+ seconds before contact`,
+            id: "conserve_ammo",
+            name: "Conserve Ammunition",
+            description: "Use ammunition efficiently and avoid unnecessary firing",
             environment: ["planet", "city"]
         }
     ],

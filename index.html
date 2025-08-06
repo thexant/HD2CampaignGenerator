@@ -37,17 +37,19 @@
             <div class="preference-group" id="campaign-length-group" style="display: none;">
                 <label for="campaign-length">Campaign Length:</label>
                 <select id="campaign-length">
-                    <option value="random">Random (3-7 missions)</option>
-                    <option value="1">Single Mission</option>
-                    <option value="2">Duo (2 missions)</option>
-                    <option value="3">Operation (3 missions)</option>
-                    <option value="4">Extended Operation (4 missions)</option>
-                    <option value="5">Campaign (5 missions)</option>
-                    <option value="6">Major Campaign (6 missions)</option>
-                    <option value="7">Epic Campaign (7 missions)</option>
-                    <option value="8">Extended Campaign (8 missions)</option>
-                    <option value="9">Marathon Campaign (9 missions)</option>
-                    <option value="10">Legendary Campaign (10 missions)</option>
+                    <option value="random">Random (2-6 operations)</option>
+                    <option value="1">Quick (1 operation)</option>
+                    <option value="2">Short (2 operations)</option>
+                    <option value="3">Short (3 operations)</option>
+                    <option value="4">Regular (4 operations)</option>
+                    <option value="5">Regular (5 operations)</option>
+                    <option value="6">Regular (6 operations)</option>
+                    <option value="7">Long (7 operations)</option>
+                    <option value="8">Long (8 operations)</option>
+                    <option value="9">Long (9 operations)</option>
+                    <option value="10">Legendary (10 operations)</option>
+                    <option value="11">Legendary (11 operations)</option>
+                    <option value="12">Legendary (12 operations)</option>
                     <option value="custom">Custom Length</option>
                 </select>
             </div>
@@ -56,40 +58,31 @@
             <div class="preference-group" id="tour-length-group">
                 <label for="tour-length">Tour Length:</label>
                 <select id="tour-length">
-                    <option value="quick">Quick (2-3 missions)</option>
-                    <option value="short">Short (4-5 missions)</option>
-                    <option value="regular" selected>Regular (6-8 missions)</option>
-                    <option value="long">Long (8-10 missions)</option>
-                    <option value="legendary">Legendary (10-12 missions)</option>
+                    <option value="quick">Quick (1 operation)</option>
+                    <option value="short">Short (2-3 operations)</option>
+                    <option value="regular" selected>Regular (4-6 operations)</option>
+                    <option value="long">Long (7-9 operations)</option>
+                    <option value="legendary">Legendary (10-12 operations)</option>
                     <option value="custom">Custom Length</option>
                 </select>
             </div>
 
             <div class="preference-group" id="custom-tour-length-group" style="display: none;">
-                <label for="custom-tour-length-input">Custom Tour Length (1-50 missions):</label>
+                <label for="custom-tour-length-input">Custom Tour Length (1-50 operations):</label>
                 <input type="number" id="custom-tour-length-input" min="1" max="50" value="6">
             </div>
 
-            <!-- Legacies Mode Toggle -->
-            <div class="preference-group" id="legacies-mode-group">
-                <div class="legacies-mode-toggle">
-                    <input type="checkbox" id="legacies-mode-checkbox">
-                    <label for="legacies-mode-checkbox">
-                        <span class="legacies-mode-label">Legacies Mode</span>
-                        <span class="legacies-mode-status" id="legacies-mode-status">OFF</span>
+            <!-- Stats Mode Toggle -->
+            <div class="preference-group" id="stats-mode-group">
+                <div class="stats-mode-toggle">
+                    <input type="checkbox" id="stats-mode-checkbox">
+                    <label for="stats-mode-checkbox">
+                        <span class="stats-mode-label">Stats Mode</span>
+                        <span class="stats-mode-status" id="stats-mode-status">OFF</span>
                     </label>
                 </div>
-                <p class="legacies-mode-description">Track squad member lives and deaths throughout your tour</p>
+                <p class="stats-mode-description">Track squad member statistics (kills, samples, deaths) throughout your tour</p>
                 
-                <!-- Character Mode Toggle (only visible when Legacies Mode is enabled) -->
-                <div class="character-mode-toggle" id="character-mode-toggle" style="display: none; margin-top: 15px;">
-                    <input type="checkbox" id="character-mode-checkbox">
-                    <label for="character-mode-checkbox">
-                        <span class="character-mode-label">Character Mode</span>
-                        <span class="character-mode-status" id="character-mode-status">OFF</span>
-                    </label>
-                    <p class="character-mode-description">Track a new character's legacy in this campaign each time they die</p>
-                </div>
             </div>
 
             <!-- Tour Theme Selection -->
@@ -97,6 +90,7 @@
                 <label for="tour-theme">Tour Theme:</label>
                 <select id="tour-theme">
                     <option value="random" selected>Random Theme</option>
+                    <option value="major_order">Major Order (Current Objectives)</option>
                     <option value="single_planet">Single Planet Conquest</option>
                     <option value="sector_campaign">Sector Campaign</option>
                     <option value="faction_focused">Faction Focus</option>
@@ -105,6 +99,15 @@
                     <option value="biome_group_themed">Biome Group Focus</option>
                     <option value="liberation_defense">War Front Operations</option>
                 </select>
+            </div>
+
+            <!-- Major Order Info (shown only when major_order theme is selected) -->
+            <div class="preference-group" id="major-order-info-group" style="display: none;">
+                <div class="major-order-info">
+                    <h4 id="major-order-title">Loading Major Order...</h4>
+                    <p id="major-order-briefing" class="major-order-briefing"></p>
+                    <p id="major-order-status" class="major-order-status"></p>
+                </div>
             </div>
 
             <!-- Tour Difficulty Selection -->
@@ -140,7 +143,7 @@
                 </select>
             </div>
 
-            <!-- Legacies Mode Squad Names -->
+            <!-- Stats Mode Squad Names -->
             <div class="preference-group" id="squad-names-group" style="display: none;">
                 <label>Squad Member Names (up to 4):</label>
                 <div class="squad-names-inputs">
@@ -151,29 +154,6 @@
                 </div>
             </div>
 
-            <!-- Legacies Mode Lives Options -->
-            <div class="preference-group" id="lives-options-group" style="display: none;">
-                <label for="lives-mode">Lives Mode:</label>
-                <select id="lives-mode">
-                    <option value="default" selected>Default (2 lives per 3 missions)</option>
-                    <option value="permadeath">Perma-death (1 life for entire tour)</option>
-                    <option value="custom">Customizable</option>
-                </select>
-                <div class="lives-explanation" id="lives-explanation">
-                    Each player can die once per three missions. Every 3 missions, lives replenish (but do not stack).
-                </div>
-            </div>
-
-            <!-- Custom Lives Settings -->
-            <div class="preference-group" id="custom-lives-group" style="display: none;">
-                <label for="custom-lives-count">Lives per cycle:</label>
-                <input type="number" id="custom-lives-count" min="1" max="10" value="2">
-                <label for="custom-mission-cycle">Mission cycle length:</label>
-                <input type="number" id="custom-mission-cycle" min="1" max="10" value="3">
-                <div class="custom-lives-explanation">
-                    Players get <span id="lives-display">2</span> lives every <span id="cycle-display">3</span> missions.
-                </div>
-            </div>
 
             <!-- Faction Selection (shown only when faction_focused theme is selected) -->
             <div class="preference-group" id="tour-faction-group" style="display: none;">
@@ -196,7 +176,7 @@
             </div>
 
             <div class="preference-group" id="custom-length-group" style="display: none;">
-                <label for="custom-length-input">Custom Length (1-50 missions):</label>
+                <label for="custom-length-input">Custom Length (1-50 operations):</label>
                 <input type="number" id="custom-length-input" min="1" max="50" value="5">
             </div>
 
@@ -256,11 +236,23 @@
             <div class="campaign-actions">
                 <button id="generate-campaign" class="generate-btn" style="display: none;">Generate Campaign</button>
                 <button id="start-tour" class="generate-btn">Start Tour</button>
+                <button id="import-campaign-main" class="retry-btn">Import Campaign</button>
+                <input type="file" id="import-campaign-main-file" accept=".json" style="display: none;">
                 <div id="background-loading-indicator" class="background-loading-indicator" style="display: none;">
                     <small>📡 Updating galactic war data...</small>
                 </div>
                 <button id="regenerate-campaign" class="regenerate-btn" style="display: none;">Regenerate Campaign</button>
                 <button id="clear-cache" class="retry-btn" onclick="apiService.clearCache()" style="margin-left: 10px;">Clear Cache & Force Refresh</button>
+            </div>
+
+            <div class="utilities-section">
+                <details class="utilities-details">
+                    <summary class="utilities-summary">Advanced Tools</summary>
+                    <div class="utilities-content">
+                        <button id="campaign-builder" class="utility-btn">Campaign Builder</button>
+                        <small class="utility-description">Create custom campaigns with per-operation control</small>
+                    </div>
+                </details>
             </div>
         </section>
 
@@ -304,7 +296,7 @@
                     <div class="tour-info">
                         <h2 id="tour-name">Tour of War: [Tour Name]</h2>
                         <div class="progress-indicator">
-                            Mission <span id="current-mission-number">1</span> of <span id="total-missions">6</span>
+                            Operation <span id="current-mission-number">1</span> of <span id="total-missions">6</span>
                         </div>
                     </div>
                 </div>
@@ -314,8 +306,14 @@
                 </div>
 
                 <div class="tour-actions">
-                    <button id="mission-complete" class="progress-btn" style="display: none;">Mission Complete - Progress Tour</button>
-                    <button id="mission-failed" class="fail-btn" style="display: none;">Mission Failed</button>
+                    <button id="mission-complete" class="progress-btn" style="display: none;">Operation Complete - Progress Tour</button>
+                    <button id="mission-failed" class="fail-btn" style="display: none;">Operation Failed</button>
+                    <div class="tour-management-buttons">
+                        <button id="export-tour" class="retry-btn">Export Tour</button>
+                        <button id="export-campaign-from-tour" class="retry-btn" style="display: none;">Export Campaign Structure</button>
+                        <button id="import-tour" class="retry-btn">Import Tour</button>
+                        <input type="file" id="import-tour-file" accept=".json" style="display: none;">
+                    </div>
                     <button id="abandon-tour" class="retry-btn">Abandon Tour</button>
                 </div>
             </div>
@@ -364,122 +362,40 @@
                 </div>
             </div>
 
-            <!-- Death Tracking Dialog -->
-            <div class="death-tracking-dialog" id="death-tracking-dialog" style="display: none;">
+            <!-- Stats Tracking Dialog -->
+            <div class="stats-tracking-dialog" id="stats-tracking-dialog" style="display: none;">
                 <div class="dialog-header">
-                    <h3>Mission Report: Casualties</h3>
+                    <h3>Operation Report: Statistics</h3>
                 </div>
                 <div class="dialog-content">
-                    <p>How many times did each squad member die during this mission?</p>
-                    <div class="casualty-checkboxes" id="casualty-checkboxes">
-                        <!-- Squad member death counters will be dynamically generated -->
+                    <p>Enter statistics for each squad member during this operation (leave blank to skip):</p>
+                    <div class="stats-inputs-container" id="stats-inputs-container">
+                        <!-- Stats inputs for each squad member and mission will be dynamically generated -->
                     </div>
                 </div>
                 <div class="dialog-actions">
-                    <button id="confirm-casualties" class="generate-btn">Confirm</button>
-                    <button id="no-casualties" class="retry-btn">No Casualties</button>
+                    <button id="confirm-stats" class="generate-btn">Confirm</button>
+                    <button id="skip-stats" class="retry-btn">Skip Stats Entry</button>
                 </div>
             </div>
 
-            <!-- Mission Re-roll Confirmation Dialog -->
-            <div class="mission-reroll-dialog" id="mission-reroll-dialog" style="display: none;">
-                <div class="dialog-header">
-                    <h3>Mission Re-roll</h3>
-                </div>
-                <div class="dialog-content">
-                    <p>Use the Mission Re-Roll if the generated mission is not available on the generated planet map for the displayed difficulty.</p>
-                </div>
-                <div class="dialog-actions">
-                    <button id="confirm-reroll" class="generate-btn" onclick="app.handleConfirmReroll()">OK</button>
-                    <button id="cancel-reroll" class="retry-btn" onclick="app.handleCancelReroll()">Cancel</button>
-                </div>
-            </div>
 
-            <!-- Death Note Dialog -->
-            <div class="modal-overlay" id="death-note-modal" style="display: none;">
-                <div class="modal-dialog death-note-dialog">
-                    <div class="dialog-header">
-                        <h3>Helldiver KIA - Death Note</h3>
-                    </div>
-                    <div class="dialog-content">
-                        <p><strong id="death-note-player-name">[Player Name]</strong> has been marked as KIA.</p>
-                        <p>Add a note about their death:</p>
-                        <textarea id="death-note-input" placeholder="Cause of Death?" maxlength="500" rows="4"></textarea>
-                        <div class="death-note-character-count">
-                            <span id="death-note-count">0</span>/500 characters
-                        </div>
-                    </div>
-                    <div class="dialog-actions">
-                        <button id="death-note-ok" class="generate-btn">OK</button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Character Replacement Dialog (Character Mode) -->
-            <div class="modal-overlay" id="character-replacement-modal" style="display: none;">
-                <div class="modal-dialog character-replacement-dialog">
-                    <div class="dialog-header">
-                        <h3>Character KIA - New Character</h3>
-                    </div>
-                    <div class="dialog-content">
-                        <p id="character-replacement-message">[Character replacement message will be generated dynamically]</p>
-                        
-                        <div class="death-note-section">
-                            <p>Add a note about their final moments:</p>
-                            <textarea id="character-replacement-death-note" placeholder="Cause of death or final moments..." maxlength="500" rows="3"></textarea>
-                            <div class="character-death-note-count">
-                                <span id="character-replacement-death-count">0</span>/500 characters
-                            </div>
-                        </div>
-                        
-                        <!-- Additional Characters Section (shown when multiple characters died) -->
-                        <div class="additional-characters-section" id="additional-characters-section" style="display: none;">
-                            <p>Additional characters that were KIA this mission:</p>
-                            <div id="additional-character-inputs">
-                                <!-- Additional character name inputs will be dynamically generated -->
-                            </div>
-                        </div>
-                        
-                        <div class="new-character-section">
-                            <p>Enter your new character's name:</p>
-                            <input type="text" id="character-replacement-input" placeholder="New character name" maxlength="30">
-                            <div class="character-replacement-note">
-                                <p>Your new character will start with full lives.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="dialog-actions">
-                        <button id="character-replacement-ok" class="generate-btn">Continue with New Character</button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Legacies Completion Screen -->
-            <div class="legacies-completion" id="legacies-completion" style="display: none;">
+            <!-- Stats Completion Screen -->
+            <div class="stats-completion" id="stats-completion" style="display: none;">
                 <div class="completion-header">
                     <h2>Tour of War Complete!</h2>
-                    <h3 id="legacies-completed-tour-name">[Tour Name]</h3>
+                    <h3 id="stats-completed-tour-name">[Tour Name]</h3>
                 </div>
                 <div class="completion-content">
                     <p class="completion-message">Your Tour of War is complete, Helldiver. Through multiple campaigns and countless sacrifices, you have proven that Democracy's defenders are truly unstoppable.</p>
                     
-                    <div class="completion-stats" id="legacies-completion-stats">
+                    <div class="completion-stats" id="stats-completion-stats">
                         <!-- Tour stats will be displayed here -->
                     </div>
 
-                    <div class="survivors-section">
-                        <h4>Surviving Helldivers</h4>
-                        <div class="survivors-list" id="survivors-list">
-                            <!-- Living squad members will be listed here -->
-                        </div>
-                    </div>
 
-                    <div class="kia-section" id="kia-section" style="display: none;">
-                        <h4>Helldivers KIA - Replaced by Reinforcements</h4>
-                        <div class="kia-list" id="kia-list">
-                            <!-- Dead squad members will be listed here -->
-                        </div>
-                    </div>
                     
                     <div class="completion-message-final">
                         <p><strong>Your victories across multiple worlds have demonstrated the true power of Managed Democracy. Each battlefield you conquered brought Freedom to those who had forgotten its meaning.</strong></p>
@@ -487,11 +403,71 @@
                     </div>
                 </div>
                 <div class="completion-actions">
-                    <button id="start-new-legacies-tour" class="generate-btn">Start New Tour</button>
-                    <button id="return-to-campaigns-legacies" class="retry-btn">Return to Campaign Generator</button>
+                    <button id="start-new-stats-tour" class="generate-btn">Start New Tour</button>
+                    <button id="return-to-campaigns-stats" class="retry-btn">Return to Campaign Generator</button>
                 </div>
             </div>
         </section>
+
+        <!-- Campaign Builder Section -->
+        <section class="campaign-builder" id="campaign-builder-section" style="display: none;">
+            <div class="builder-header">
+                <h2>Campaign Builder</h2>
+                <p>Create custom campaigns with full control over each operation</p>
+                <button id="back-to-generator" class="retry-btn">← Back to Generator</button>
+            </div>
+
+            <div class="campaign-metadata">
+                <div class="metadata-group">
+                    <label for="campaign-name-input">Campaign Name:</label>
+                    <input type="text" id="campaign-name-input" placeholder="Enter campaign name..." maxlength="100">
+                </div>
+                <div class="metadata-group">
+                    <label for="campaign-description-input">Campaign Description:</label>
+                    <textarea id="campaign-description-input" placeholder="Describe your campaign..." rows="3" maxlength="500"></textarea>
+                </div>
+            </div>
+
+            <div class="operations-section">
+                <div class="operations-header">
+                    <h3>Operations</h3>
+                    <button id="add-operation-btn" class="generate-btn">+ Add Operation</button>
+                </div>
+                
+                <div id="operations-container" class="operations-container">
+                    <!-- Operations will be dynamically added here -->
+                </div>
+            </div>
+
+            <div class="builder-actions">
+                <button id="preview-campaign" class="retry-btn">Preview Campaign</button>
+                <button id="export-custom-campaign" class="generate-btn">Export Campaign</button>
+                <button id="import-custom-campaign" class="retry-btn">Import Campaign</button>
+                <input type="file" id="import-custom-file" accept=".json" style="display: none;">
+                <button id="reset-builder" class="retry-btn">Reset</button>
+            </div>
+
+            <div class="validation-status" id="builder-validation" style="display: none;">
+                <!-- Validation messages will appear here -->
+            </div>
+        </section>
+
+        <!-- Campaign Builder Preview Modal -->
+        <div class="builder-preview-modal" id="builder-preview-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Campaign Preview</h3>
+                    <button id="close-preview" class="close-btn">×</button>
+                </div>
+                <div class="modal-body" id="preview-content">
+                    <!-- Preview content will be generated here -->
+                </div>
+                <div class="modal-actions">
+                    <button id="start-custom-tour" class="generate-btn">Start This Campaign</button>
+                    <button id="close-preview-2" class="retry-btn">Close Preview</button>
+                </div>
+            </div>
+        </div>
 
         <section class="loading" id="loading" style="display: none;">
             <div class="loading-spinner"></div>
@@ -517,6 +493,7 @@
     <script src="js/mission-generator.js"></script>
     <script src="js/narrative-generator.js"></script>
     <script src="js/campaign-generator.js"></script>
+    <script src="js/campaign-builder.js"></script>
     <script src="js/app.js"></script>
     <script>
         // Override methods to maintain always-on tour mode
