@@ -127,6 +127,12 @@ class App {
             }
         }
 
+        // Custom campaign name input
+        const customCampaignNameInput = document.getElementById('custom-campaign-name');
+        if (customCampaignNameInput) {
+            customCampaignNameInput.addEventListener('input', () => this.savePreferences());
+        }
+
 
         // Tour theme change handler to show/hide faction selection
         const tourThemeSelect = document.getElementById('tour-theme');
@@ -1297,6 +1303,8 @@ class App {
             targetType: document.getElementById('target-type-preference')?.value || 'mixed',
             statsMode: this.statsMode,
             squadMembers: squadMembers,
+            // Custom campaign name
+            customCampaignName: document.getElementById('custom-campaign-name')?.value?.trim() || '',
             // Tour preferences
             tourLength: document.getElementById('tour-length')?.value || 'regular',
             customTourLength: parseInt(document.getElementById('custom-tour-length-input')?.value) || 6,
@@ -1575,6 +1583,11 @@ class App {
                 if (element && this.preferences[key]) {
                     element.value = this.preferences[key];
                 }
+            } else if (key === 'customCampaignName') {
+                const element = document.getElementById('custom-campaign-name');
+                if (element && this.preferences[key]) {
+                    element.value = this.preferences[key];
+                }
             } else if (key === 'tourLength') {
                 const element = document.getElementById('tour-length');
                 if (element && this.preferences[key]) {
@@ -1771,13 +1784,21 @@ class App {
         }
 
         // Generate tour narrative based on theme
-        let tourName = this.generateThemedTourName(campaignTheme);
+        let tourName;
         
-        // Add theme-specific info to tour name for debugging
-        if (campaignTheme.selectedBiome) {
-            tourName += ` (${campaignTheme.selectedBiome})`;
-        } else if (campaignTheme.selectedBiomeGroup) {
-            tourName += ` (${this.getBiomeGroupName(campaignTheme.selectedBiomeGroup)} Group)`;
+        // Check if user provided custom campaign name
+        const customName = preferences.customCampaignName?.trim();
+        if (customName) {
+            tourName = customName;
+        } else {
+            tourName = this.generateThemedTourName(campaignTheme);
+            
+            // Add theme-specific info to tour name for debugging
+            if (campaignTheme.selectedBiome) {
+                tourName += ` (${campaignTheme.selectedBiome})`;
+            } else if (campaignTheme.selectedBiomeGroup) {
+                tourName += ` (${this.getBiomeGroupName(campaignTheme.selectedBiomeGroup)} Group)`;
+            }
         }
         
         const tour = {

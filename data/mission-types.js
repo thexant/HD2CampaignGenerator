@@ -561,7 +561,7 @@ const MISSION_TYPES = {
         },
         {
             name: "Rapid Deployment",
-            description: "Complete objectives with maximum speed and efficiency"
+            description: "Complete objectives with maximum speed and efficiency, minimize time spent in this operation"
         },
         {
             name: "Defensive Positioning",
@@ -576,8 +576,16 @@ const MISSION_TYPES = {
             description: "Kill as many enemies as possible using melee combat"
         },
         {
-            name: "Liberation Documentation",
-            description: "Document enemy positions and tactics for future liberation efforts"
+            name: "Mobility Squad",
+            description: "The Squad should utilize Jump Packs, Hover Packs and Warp Packs during the operation."
+        },
+		{
+            name: "HELLDIVER SMASH",
+            description: "For at least 1 mission in this operation, all squad members should wear heavy armor and utilize heavy weapons and ordnance at every possible opportunity."
+        },
+		{
+            name: "Lightweight",
+            description: "For at least 1 mission in this operation, all squad members should wear light armor and use lightweight weapons such as SMG's and secondaries."
         }
     ]
 };

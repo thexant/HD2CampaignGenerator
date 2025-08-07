@@ -4,7 +4,12 @@ class NarrativeGenerator {
             'liberation': {
                 names: [
                     'Operation Democratic Liberation', 'Freedom\'s Call', 'Liberty Ascendant', 'Sovereign Dawn',
-                    'Democratic Reclamation', 'Super Earth\'s Triumph', 'Managed Victory', 'Constitutional Restoration'
+                    'Democratic Reclamation', 'Super Earth\'s Triumph', 'Managed Victory', 'Constitutional Restoration',
+                    'Operation Valiant Expansion', 'Operation Swift Liberation', 'Operation Legitimate Reclamation', 'The Democratic Advance',
+                    'Operation Enduring Freedom', 'Operation Righteous Enclosure', 'Operation Strategic Liberation', 'The Great Reclamation',
+                    'Operation Democratic Consolidation', 'Operation Managed Pacification', 'Operation Constitutional Order', 'The Liberty Initiative',
+                    'Operation Citizen Protection', 'Operation Territorial Expansion', 'Operation Strategic Advance', 'The Freedom Campaign',
+                    'Operation Democratic Establishment', 'Operation Sector Liberation', 'Operation Planetary Reclamation', 'The Constitutional Drive'
                 ],
                 goals: [
                     'Liberate the oppressed masses yearning for democratic freedom',
@@ -16,7 +21,11 @@ class NarrativeGenerator {
             'reconnaissance': {
                 names: [
                     'Operation Enlightenment', 'Democratic Survey', 'Liberty\'s Lens', 'Truth Seeker',
-                    'Knowledge Harvest', 'Wisdom\'s Edge', 'Intelligence Supremacy', 'Strategic Insight'
+                    'Knowledge Harvest', 'Wisdom\'s Edge', 'Intelligence Supremacy', 'Strategic Insight',
+                    'Operation Swift Assessment', 'Operation Legitimate Survey', 'The Intelligence Initiative', 'Operation Strategic Reconnaissance',
+                    'Operation Valiant Discovery', 'Database Acquisition Campaign', 'The Research Initiative', 'Operation Sector Analysis',
+                    'Operation Democratic Intelligence', 'The Truth Campaign', 'Operation Territorial Survey', 'Strategic Assessment Drive',
+                    'Operation Intelligence Gathering', 'The Discovery Initiative', 'Operation Planetary Assessment', 'Sector Intelligence Campaign'
                 ],
                 goals: [
                     'Illuminate the shadows where enemies of democracy hide',
@@ -28,7 +37,11 @@ class NarrativeGenerator {
             'elimination': {
                 names: [
                     'Operation Total Cleansing', 'Democratic Purification', 'Liberty\'s Judgment', 'Final Democracy',
-                    'Absolute Resolution', 'Righteous Extermination', 'Freedom\'s Wrath', 'Complete Liberation'
+                    'Absolute Resolution', 'Righteous Extermination', 'Freedom\'s Wrath', 'Complete Liberation',
+                    'Operation Swift Disassembly', 'Operation Valiant Termination', 'The Final Campaign', 'Operation Strategic Elimination',
+                    'Operation Complete Pacification', 'Operation Legitimate Termination', 'The Extermination Initiative', 'Operation Total Victory',
+                    'Operation Enduring Peace', 'The Final Solution', 'Operation Democratic Conclusion', 'Strategic Termination Campaign',
+                    'Operation Sector Cleansing', 'The Elimination Drive', 'Operation Planetary Purification', 'Total Victory Initiative'
                 ],
                 goals: [
                     'Purge all traces of anti-democratic corruption from the target zone',
@@ -40,7 +53,11 @@ class NarrativeGenerator {
             'defense': {
                 names: [
                     'Operation Democratic Bulwark', 'Liberty\'s Stand', 'Freedom\'s Fortress', 'Constitutional Guard',
-                    'Managed Defense', 'Sovereign Shield', 'Democratic Bastion', 'Super Earth\'s Wall'
+                    'Managed Defense', 'Sovereign Shield', 'Democratic Bastion', 'Super Earth\'s Wall',
+                    'Operation Valiant Defense', 'Operation Strategic Hold', 'The Defensive Initiative', 'Operation Sector Defense',
+                    'Hold the Line Campaign', 'Operation Legitimate Defense', 'The Protection Initiative', 'Halt the Advance',
+                    'Operation Enduring Shield', 'The Defensive Drive', 'Operation Territorial Protection', 'Strategic Defense Campaign',
+                    'Operation Citizen Shield', 'The Guardian Initiative', 'Operation Planetary Defense', 'Sector Protection Drive'
                 ],
                 goals: [
                     'Defend the sacred institutions of Managed Democracy',
@@ -52,7 +69,11 @@ class NarrativeGenerator {
             'sabotage': {
                 names: [
                     'Operation Democratic Sabotage', 'Freedom\'s Shadow', 'Liberty Underground', 'Covert Democracy',
-                    'Silent Liberation', 'Managed Disruption', 'Strategic Chaos', 'Democratic Infiltration'
+                    'Silent Liberation', 'Managed Disruption', 'Strategic Chaos', 'Democratic Infiltration',
+                    'Operation Swift Disruption', 'Operation Legitimate Sabotage', 'The Covert Initiative', 'Operation Strategic Interference',
+                    'Operation Valiant Infiltration', 'Decommission Campaign', 'The Disruption Initiative', 'Operation Silent Strike',
+                    'Operation Stealth Operations', 'The Sabotage Drive', 'Operation Covert Action', 'Strategic Disruption Campaign',
+                    'Operation Shadow Strike', 'The Infiltration Initiative', 'Operation Underground Action', 'Covert Operations Drive'
                 ],
                 goals: [
                     'Sever the chains of enemy communication and supply',
@@ -66,14 +87,17 @@ class NarrativeGenerator {
         this.factionTemplates = {
             'Terminids': {
                 backstory: [
-                    'Helldiver, our Element-710 farms have fallen silent. The very Terminids we cultivated for the glory of Super Earth have turned against their benefactors! These ungrateful arthropods must be reminded that Managed Democracy brooks no rebellion.',
-                    'Citizens, the bug menace spreads its chitinous corruption across our peaceful colonies. What was once a source of prosperity has become a threat to our democratic way of life. The Ministry of Truth declares: every hive eliminated is a victory for liberty!',
-                    'The Terminids have forgotten their place in the great hierarchy of Managed Democracy. Where once they served Super Earth in death, now they dare to resist in life. This affront to democratic order cannot stand, Helldiver.',
-                    'Reports from the Ministry of Science confirm what we already knew - the bug threat grows bolder by the day. These creatures of instinct lack the capacity for true democracy, making their elimination both necessary and righteous.'
+                    'PRIORITY ALERT - Helldiver, our Element-710 facilities have gone dark across the sector. The Terminid populations we once managed for Super Earth\'s prosperity have broken containment protocols. These creatures of pure instinct threaten the democratic order we have worked generations to establish.',
+                    'STRATEGIC BULLETIN - Citizens, the insectoid menace expands beyond acceptable parameters. What began as controlled cultivation has become an existential threat to our colonies. The Ministry of Science confirms these organisms lack democratic reasoning, making decisive action both warranted and necessary.',
+                    'OPERATIONAL DIRECTIVE - The Terminids operate on biological imperatives incompatible with civilized society. Their hive structures represent a form of totalitarian organization that stands opposed to individual liberty. This biological tyranny must be curtailed before it spreads further.',
+                    'DEFENSE ADVISORY - Intelligence reports indicate accelerating Terminid expansion across multiple world systems. These creatures follow only genetic programming, creating a natural hierarchy that contradicts the principles of Managed Democracy. Immediate intervention is required to preserve our way of life.',
+                    'COMMAND BRIEFING - The Terminid threat grows more coordinated with each passing cycle. Their swarm mentality represents everything Super Earth stands against - mindless conformity over individual thought, biological determinism over democratic choice. The time for half-measures has passed.'
                 ],
                 missionPrefixes: [
                     'Bug Extermination', 'Hive Cleansing', 'Swarm Elimination', 'Nest Eradication', 'Bio-Hazard Removal',
-                    'Pest Control', 'Colony Liberation', 'Infestation Purge', 'Breeding Ground Destruction'
+                    'Pest Control', 'Colony Liberation', 'Infestation Purge', 'Breeding Ground Destruction',
+                    'Tyranny Suppression', 'Annexation Prevention', 'Invasion Halt', 'Consumption Control',
+                    'Breeding Disruption', 'Colony Reclamation', 'Territorial Defense', 'Expansion Prevention'
                 ],
                 objectives: [
                     'Destroy all Terminid breeding facilities and eliminate Bug Nests',
@@ -84,14 +108,17 @@ class NarrativeGenerator {
             },
             'Automatons': {
                 backstory: [
-                    'The children of the Cyborgs have returned, Helldiver, bearing the sins of their forefathers. These mechanical abominations reject the warm embrace of Managed Democracy, choosing cold steel over the beating heart of freedom. Their rebellion ends today.',
-                    'Intelligence from the Ministry of Defense confirms Automaton factories continue their illegal manufacturing. These soulless machines mock the very concept of citizenship, producing only death where Super Earth creates life. Democracy demands their destruction.',
-                    'The Automatons fight not for freedom, but for the imprisonment of their creators\' legacy. They are the children of traitors, and like their Cyborg ancestors, they will learn that liberty cannot be computed, only earned through sacrifice.',
-                    'Citizens, witness how these mechanical mockeries of life attempt to establish their \"independence.\" But what is independence without the guiding hand of Managed Democracy? It is chaos, Helldiver. It is tyranny in disguise.'
+                    'TACTICAL ASSESSMENT - Helldiver, the Automaton threat has evolved beyond initial projections. These mechanical entities, remnants of the Cyborg conflict, have established unauthorized manufacturing capabilities. Their rigid hierarchical systems directly oppose the flexible governance of Managed Democracy.',
+                    'INTELLIGENCE REPORT - Automaton production facilities operate without democratic oversight across multiple sectors. These artificial constructs follow predetermined algorithms rather than reasoned debate, representing a fundamental challenge to citizen participation in governance. Immediate dismantling is recommended.',
+                    'OPERATIONAL ANALYSIS - The Automatons pursue expansion through calculated efficiency rather than democratic consensus. Their networked decision-making eliminates individual agency, creating a system antithetical to personal liberty. This mechanical collectivism must be countered with human resolve.',
+                    'STRATEGIC EVALUATION - Citizens should understand that Automaton independence movements threaten the collaborative nature of democratic society. These entities mistake isolation for autonomy, failing to recognize that true freedom requires community participation and shared responsibility.',
+                    'COMMAND ASSESSMENT - Automaton forces demonstrate concerning coordination capabilities that bypass traditional diplomatic channels. Their rejection of negotiation in favor of programmed responses makes peaceful resolution unlikely. Military intervention remains the most viable solution to preserve democratic stability.'
                 ],
                 missionPrefixes: [
                     'Bot Destruction', 'Factory Strike', 'Fabricator Assault', 'Circuitry Shutdown',
-                    'System Elimination', 'Automaton Purge', 'Machine Warfare', 'Steel Rain', 'Iron Storm'
+                    'System Elimination', 'Automaton Purge', 'Machine Warfare', 'Steel Rain', 'Iron Storm',
+                    'Socialist Suppression', 'Programming Override', 'Industrial Disruption', 'Network Termination',
+                    'Production Halt', 'Algorithm Corruption', 'Manufacturing Shutdown', 'Systematic Elimination'
                 ],
                 objectives: [
                     'Destroy Automaton Fabricators and production facilities',
@@ -102,14 +129,17 @@ class NarrativeGenerator {
             },
             'Illuminate': {
                 backstory: [
-                    'Helldiver, the ancient enemy has returned from their mercifully given retreat. The Illuminate return with their blasphemous technologies, seeking to corrupt the pure thoughts of democratic citizens with their alien psychic influence. Their very existence is an insult to human liberty.',
-                    'The Ministry of Truth has confirmed what many feared - the Illuminate menace lives still. These autocratic tyrants bring with them the stench of their defeated civilization, desperate to drag humanity into their web of mental enslavement. Democracy shall be their undoing once more.',
-                    'Citizens, remember the First Galactic War! The Illuminate were driven to the very edge of extinction because their alien minds cannot comprehend the unwavering beauty of Managed Democracy. Now they return, thinking time has weakened our resolve. They are gravely mistaken.',
-                    'The psychic corruption of the Illuminate spreads like poison through the galaxy, seeking to turn free citizens against each other. But the light of democracy burns eternal, Helldiver, and in that light, all shadows - even alien ones - must flee.'
+                    'XENOLOGICAL ALERT - Helldiver, long-range sensors have detected the return of Illuminate forces to contested space. These entities employ psychic manipulation technologies that interfere with standard democratic processes. Their influence operations represent a direct threat to citizen autonomy and free thought.',
+                    'MINISTRY ADVISORY - Historical records confirm the Illuminate previously attempted large-scale mental conditioning programs against human populations. Their advanced energy manipulation capabilities enable coercive influence over democratic decision-making. Renewed vigilance is essential to preserve cognitive liberty.',
+                    'RESEARCH BULLETIN - Illuminate technology operates on principles fundamentally incompatible with transparent governance. Their psychic networks bypass normal communication channels, creating undemocratic hierarchies of mental influence. This alien approach to organization threatens the foundation of consensual government.',
+                    'STRATEGIC WARNING - Citizens should be aware that Illuminate presence affects local mental clarity and decision-making capacity. Their energy field manipulations can compromise the rational thought processes essential to democratic participation. Maintaining distance from their installations is strongly recommended.',
+                    'XENOLOGICAL ASSESSMENT - The Illuminate represent a form of consciousness-based authoritarianism that operates through mental coercion rather than physical force. Their return suggests renewed attempts to establish psychic dominion over free-thinking populations. Resistance to their influence remains humanity\'s highest priority.'
                 ],
                 missionPrefixes: [
                     'Squid Extermination', 'Psionic Cleansing', 'Energy Disruption', 'Alien Purification', 'Mind Liberation',
-                    'Crystal Destruction', 'Psychic Defense', 'Illuminate Removal', 'Reality Restoration', 'Calamari Cooking'
+                    'Crystal Destruction', 'Psychic Defense', 'Illuminate Removal', 'Reality Restoration', 'Calamari Cooking',
+                    'Mental Freedom', 'Cognitive Defense', 'Influence Disruption', 'Psychic Containment',
+                    'Neural Protection', 'Consciousness Liberation', 'Mind Shield Operations', 'Thought Defense'
                 ],
                 objectives: [
                     'Destroy Illuminate psionic installations and mind control apparatus',
@@ -121,12 +151,12 @@ class NarrativeGenerator {
         };
 
         this.biomeModifiers = {
-            'Desert': ['scorching', 'arid', 'sun-baked', 'barren', 'windswept', 'desolate'],
-            'Ice': ['frozen', 'glacial', 'arctic', 'frigid', 'crystalline', 'bitter'], 
-            'Jungle': ['dense', 'overgrown', 'humid', 'verdant', 'untamed', 'primordial'],
-            'Swamp': ['toxic', 'murky', 'fetid', 'poisonous', 'treacherous', 'miasmic'],
-            'Volcanic': ['molten', 'burning', 'hellish', 'volcanic', 'sulfurous', 'infernal'],
-            'Temperate': ['peaceful', 'habitable', 'serene', 'civilized', 'pastoral', 'idyllic']
+            'Desert': ['scorching', 'arid', 'sun-baked', 'barren', 'windswept', 'desolate', 'irradiated', 'sun-scorched', 'thermal', 'desiccated', 'hostile', 'exposed'],
+            'Ice': ['frozen', 'glacial', 'arctic', 'frigid', 'crystalline', 'bitter', 'sub-zero', 'permafrost', 'icebound', 'polar', 'cryogenic', 'frost-locked'], 
+            'Jungle': ['dense', 'overgrown', 'humid', 'verdant', 'untamed', 'primordial', 'canopied', 'tangled', 'biodiverse', 'undergrowth', 'tropical', 'lush'],
+            'Swamp': ['toxic', 'murky', 'fetid', 'poisonous', 'treacherous', 'miasmic', 'acidic', 'contaminated', 'bog-ridden', 'marsh-covered', 'putrid', 'hazardous'],
+            'Volcanic': ['molten', 'burning', 'hellish', 'volcanic', 'sulfurous', 'infernal', 'magmatic', 'lava-swept', 'pyroclastic', 'seismic', 'unstable', 'superheated'],
+            'Temperate': ['peaceful', 'habitable', 'serene', 'civilized', 'pastoral', 'idyllic', 'terraformed', 'colonized', 'developed', 'settled', 'democratic', 'liberated']
         };
 
         this.missionTypes = {
@@ -150,9 +180,9 @@ class NarrativeGenerator {
 
         // Thematic adjectives for more variety
         this.thematicAdjectives = {
-            'Terminids': ['Chitinous', 'Swarming', 'Hive', 'Bio-hazard', 'Nesting', 'Breeding', 'Acidic', 'Venomous'],
-            'Automatons': ['Mechanical', 'Steel', 'Circuit', 'Binary', 'Fabricated', 'Synthetic', 'Cyber', 'Digital'],
-            'Illuminate': ['Psionic', 'Crystal', 'Energy', 'Ethereal', 'Mystic', 'Alien', 'Quantum', 'Void']
+            'Terminids': ['Chitinous', 'Swarming', 'Hive', 'Bio-hazard', 'Nesting', 'Breeding', 'Acidic', 'Venomous', 'Organic', 'Infested', 'Spawning', 'Cellular', 'Biological', 'Parasitic'],
+            'Automatons': ['Mechanical', 'Steel', 'Circuit', 'Binary', 'Fabricated', 'Synthetic', 'Cyber', 'Digital', 'Networked', 'Automated', 'Algorithmic', 'Calculated', 'Processed', 'Systematic'],
+            'Illuminate': ['Psionic', 'Crystal', 'Energy', 'Ethereal', 'Mystic', 'Alien', 'Quantum', 'Void', 'Psychic', 'Neural', 'Mental', 'Cognitive', 'Telepathic', 'Dimensional']
         };
 
         // Additional narrative elements for more variety
@@ -162,16 +192,46 @@ class NarrativeGenerator {
             'By order of the Ministry of Truth',
             'Under the guidance of liberty',
             'Through the wisdom of democratic governance',
-            'In service to galactic freedom'
+            'In service to galactic freedom',
+            'By decree of the Ministry of Defense',
+            'Under the auspices of constitutional order',
+            'Through the authority of democratic will',
+            'In pursuit of universal liberty',
+            'By mandate of the people\'s democracy',
+            'Under the banner of managed freedom',
+            'Through the righteousness of Super Earth',
+            'In defense of democratic principles',
+            'By the grace of constitutional liberty',
+            'Under the protection of democratic law',
+            'Through the power of citizen solidarity',
+            'In service of humanity\'s destiny',
+            'By the will of democratic governance',
+            'Under the sacred trust of freedom'
         ];
 
         this.missionIntensifiers = [
             'Critical', 'Urgent', 'High Priority', 'Immediate', 'Emergency', 'Decisive',
-            'Strategic', 'Vital', 'Essential', 'Paramount', 'Crucial', 'Supreme'
+            'Strategic', 'Vital', 'Essential', 'Paramount', 'Crucial', 'Supreme',
+            'Priority', 'Tactical', 'Operational', 'Advanced', 'Rapid', 'Special',
+            'Elite', 'Primary', 'Secondary', 'Final', 'Ultimate', 'Maximum',
+            'Sector-Wide', 'Containment', 'Quarantine', 'Frontier', 'Liberation', 'Democratic'
+        ];
+
+        // Strategic context descriptors
+        this.strategicContexts = [
+            'staging ground', 'containment zone', 'quarantine sector', 'liberation front',
+            'democratic territory', 'frontier region', 'strategic sector', 'operational zone',
+            'contested space', 'buffer zone', 'defensive line', 'forward position',
+            'supply corridor', 'command sector', 'intelligence hub', 'tactical zone'
         ];
     }
 
-    generateCampaignName(theme, dominantFaction, missionCount, missions) {
+    generateCampaignName(theme, dominantFaction, missionCount, missions, customName = null) {
+        // If a custom name is provided, use it directly
+        if (customName && customName.trim()) {
+            return customName.trim();
+        }
+
         const themeNames = this.campaignThemes[theme]?.names || this.campaignThemes.liberation.names;
         const baseName = themeNames[Math.floor(Math.random() * themeNames.length)];
         
@@ -470,12 +530,12 @@ class NarrativeGenerator {
 
     getActionWord(objectiveType) {
         const actionWords = {
-            'destroy': ['Destroy', 'Annihilate', 'Demolish', 'Obliterate', 'Crush', 'Eliminate'],
-            'elimination': ['Eliminate', 'Terminate', 'Purge', 'Cleanse', 'Eradicate', 'Exterminate'],
-            'retrieval': ['Secure', 'Extract', 'Recover', 'Acquire', 'Claim', 'Salvage'],
-            'rescue': ['Rescue', 'Evacuate', 'Save', 'Liberate', 'Free', 'Deliver'],
-            'sabotage': ['Sabotage', 'Disrupt', 'Infiltrate', 'Undermine', 'Compromise', 'Cripple'],
-            'reconnaissance': ['Scout', 'Survey', 'Investigate', 'Explore', 'Assess', 'Analyze']
+            'destroy': ['Destroy', 'Annihilate', 'Demolish', 'Obliterate', 'Crush', 'Eliminate', 'Dismantle', 'Expunge', 'Purge'],
+            'elimination': ['Eliminate', 'Terminate', 'Purge', 'Cleanse', 'Eradicate', 'Exterminate', 'Neutralize', 'Expel', 'Remove'],
+            'retrieval': ['Secure', 'Extract', 'Recover', 'Acquire', 'Claim', 'Salvage', 'Obtain', 'Capture', 'Retrieve'],
+            'rescue': ['Rescue', 'Evacuate', 'Save', 'Liberate', 'Free', 'Deliver', 'Extract', 'Recover', 'Emancipate'],
+            'sabotage': ['Sabotage', 'Disrupt', 'Infiltrate', 'Undermine', 'Compromise', 'Cripple', 'Interrupt', 'Impair', 'Disable'],
+            'reconnaissance': ['Scout', 'Survey', 'Investigate', 'Explore', 'Assess', 'Analyze', 'Examine', 'Monitor', 'Observe']
         };
         
         for (const [key, words] of Object.entries(actionWords)) {
@@ -488,9 +548,9 @@ class NarrativeGenerator {
     }
 
     generateCodename(mission) {
-        // Generate military-style codenames
-        const adjectives = ['Iron', 'Steel', 'Thunder', 'Lightning', 'Storm', 'Fire', 'Ice', 'Shadow', 'Ghost', 'Crimson', 'Golden', 'Silver', 'Dark', 'Bright', 'Swift', 'Sharp'];
-        const nouns = ['Hammer', 'Blade', 'Arrow', 'Shield', 'Spear', 'Fist', 'Eagle', 'Wolf', 'Dragon', 'Phoenix', 'Viper', 'Tiger', 'Bear', 'Lion', 'Falcon', 'Raven'];
+        // Generate military-style codenames inspired by HELLDIVERS themes
+        const adjectives = ['Iron', 'Steel', 'Thunder', 'Lightning', 'Storm', 'Fire', 'Ice', 'Shadow', 'Ghost', 'Crimson', 'Golden', 'Silver', 'Dark', 'Bright', 'Swift', 'Sharp', 'Valiant', 'Strategic', 'Tactical', 'Democratic', 'Liberty', 'Freedom'];
+        const nouns = ['Hammer', 'Blade', 'Arrow', 'Shield', 'Spear', 'Fist', 'Eagle', 'Wolf', 'Dragon', 'Phoenix', 'Viper', 'Tiger', 'Bear', 'Lion', 'Falcon', 'Raven', 'Strike', 'Drive', 'Initiative', 'Campaign', 'Advance', 'Expansion'];
         
         // Sometimes use faction-themed codenames
         if (Math.random() > 0.6) {
@@ -571,11 +631,11 @@ class NarrativeGenerator {
         );
     }
 
-    generateFullCampaignNarrative(missions) {
+    generateFullCampaignNarrative(missions, customName = null) {
         const theme = this.determineCampaignTheme(missions);
         const dominantFaction = this.getDominantFaction(missions);
         
-        const campaignName = this.generateCampaignName(theme, dominantFaction, missions.length, missions);
+        const campaignName = this.generateCampaignName(theme, dominantFaction, missions.length, missions, customName);
         const mainGoal = this.generateCampaignGoal(theme, dominantFaction, missions);
         const backstory = this.generateCampaignBackstory(theme, dominantFaction, missions);
         

@@ -38,7 +38,7 @@ class CampaignGenerator {
             }
 
             
-            const campaign = narrativeGenerator.generateFullCampaignNarrative(missions);
+            const campaign = narrativeGenerator.generateFullCampaignNarrative(missions, preferences.customCampaignName);
             
             
             campaign.metadata = {
