@@ -94,10 +94,9 @@
                     <option value="single_planet">Single Planet Conquest</option>
                     <option value="sector_campaign">Sector Campaign</option>
                     <option value="faction_focused">Faction Focus</option>
-                    <option value="mission_type_themed">Mission Type Focus</option>
                     <option value="biome_specific">Environmental Focus</option>
                     <option value="biome_group_themed">Biome Group Focus</option>
-                    <option value="liberation_defense">War Front Operations</option>
+                    <option value="custom">Custom (Configure Filters)</option>
                 </select>
             </div>
 
@@ -182,6 +181,74 @@
                     <option value="random">Any Available Sector</option>
                     <!-- Sector options will be populated dynamically -->
                 </select>
+            </div>
+
+            <!-- Custom Theme Filters (shown only when custom theme is selected) -->
+            <div class="preference-group" id="custom-filters-group" style="display: none;">
+                <div class="custom-filters-header">
+                    <h4>Custom Theme Configuration</h4>
+                    <p class="filter-description">Select planets, sectors, or factions for your campaign. Filters apply in priority order: <strong>Planets → Sectors → Factions</strong></p>
+                </div>
+                
+                <!-- Planet Filters -->
+                <div class="filter-section">
+                    <label class="filter-label">
+                        <span class="filter-title">Planets (Highest Priority)</span>
+                        <span class="filter-subtitle">Select specific planets for your campaign</span>
+                    </label>
+                    <div class="checkbox-container" id="custom-planets-container">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-planet-all" value="all">
+                            <label for="custom-planet-all">Any Available Planet</label>
+                        </div>
+                        <!-- Planet checkboxes will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Sector Filters -->
+                <div class="filter-section">
+                    <label class="filter-label">
+                        <span class="filter-title">Sectors (Medium Priority)</span>
+                        <span class="filter-subtitle">Select sectors to limit planet selection</span>
+                    </label>
+                    <div class="checkbox-container" id="custom-sectors-container">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-sector-all" value="all">
+                            <label for="custom-sector-all">Any Available Sector</label>
+                        </div>
+                        <!-- Sector checkboxes will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Faction Filters -->
+                <div class="filter-section">
+                    <label class="filter-label">
+                        <span class="filter-title">Factions (Lowest Priority)</span>
+                        <span class="filter-subtitle">Select enemy factions to fight against</span>
+                    </label>
+                    <div class="checkbox-container" id="custom-factions-container">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-all" value="all" checked>
+                            <label for="custom-faction-all">Any Available Faction</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-terminids" value="Terminids">
+                            <label for="custom-faction-terminids">Terminids</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-automatons" value="Automatons">
+                            <label for="custom-faction-automatons">Automatons</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-illuminate" value="Illuminate">
+                            <label for="custom-faction-illuminate">Illuminate</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-validation" id="custom-filter-validation" style="display: none;">
+                    <p class="validation-message">⚠️ Please select at least one filter option to continue</p>
+                </div>
             </div>
 
             <div class="preference-group" id="custom-length-group" style="display: none;">
@@ -312,8 +379,28 @@
                         <p id="tour-description" class="tour-description" style="display: none;">
                             [Campaign description will appear here]
                         </p>
-                        <div class="progress-indicator">
-                            Operation <span id="current-mission-number">1</span> of <span id="total-missions">6</span>
+                        <div class="dual-progress-container">
+                            <!-- Campaign Level Progress -->
+                            <div class="campaign-progress">
+                                <div class="progress-label">Campaign Progress</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar campaign-progress-bar" id="campaign-progress-bar">
+                                        <div class="progress-fill" id="campaign-progress-fill"></div>
+                                    </div>
+                                    <span class="progress-text">Operation <span id="current-mission-number">1</span> of <span id="total-missions">6</span></span>
+                                </div>
+                            </div>
+                            
+                            <!-- Operation Level Progress -->
+                            <div class="operation-progress">
+                                <div class="progress-label">Current Operation</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar operation-progress-bar" id="operation-progress-bar">
+                                        <div class="progress-fill" id="operation-progress-fill"></div>
+                                    </div>
+                                    <span class="progress-text">Mission <span id="current-mission-in-operation">1</span> of <span id="total-missions-in-operation">3</span></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

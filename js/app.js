@@ -367,6 +367,7 @@ class App {
         const tourPlanetGroup = document.getElementById('tour-planet-group');
         const tourSectorGroup = document.getElementById('tour-sector-group');
         const majorOrderInfoGroup = document.getElementById('major-order-info-group');
+        const customFiltersGroup = document.getElementById('custom-filters-group');
         
         if (tourFactionGroup) {
             if (event.target.value === 'faction_focused') {
@@ -400,6 +401,16 @@ class App {
                 this.loadMajorOrderInfo();
             } else {
                 majorOrderInfoGroup.style.display = 'none';
+            }
+        }
+        
+        if (customFiltersGroup) {
+            if (event.target.value === 'custom') {
+                customFiltersGroup.style.display = 'block';
+                this.populateCustomFilters();
+                this.setupCustomFilterListeners();
+            } else {
+                customFiltersGroup.style.display = 'none';
             }
         }
         
@@ -1141,10 +1152,14 @@ class App {
                 return;
             }
             
+            // Update dual progress indicators for new operation
+            this.updateDualProgressIndicators(tour, true);
+            
             // Show briefing for next operation
             this.displayNextMissionBriefing();
         } else {
-            // Still missions remaining in current operation, show squad management and then next mission
+            // Still missions remaining in current operation, update progress and show next mission
+            this.updateDualProgressIndicators(tour, true);
             this.displayCurrentTourMission();
         }
     }
@@ -1291,7 +1306,11 @@ class App {
             tourFactionPreference: document.getElementById('tour-faction-preference')?.value || 'any',
             tourMissionTypePreference: document.getElementById('tour-mission-type-preference')?.value || 'either',
             tourPlanet: document.getElementById('tour-planet')?.value || 'random',
-            tourSector: document.getElementById('tour-sector')?.value || 'random'
+            tourSector: document.getElementById('tour-sector')?.value || 'random',
+            // Custom theme filters
+            customPlanets: this.getSelectedCustomFilters('planet'),
+            customSectors: this.getSelectedCustomFilters('sector'),
+            customFactions: this.getSelectedCustomFilters('faction')
         };
     }
 
@@ -1563,6 +1582,9 @@ class App {
                     // Trigger change event for custom tour length
                     element.dispatchEvent(new Event('change'));
                 }
+            } else if (key.startsWith('custom')) {
+                // Handle custom filter preferences
+                this.applyCustomFilterPreferences(key, this.preferences[key]);
             } else if (key.startsWith('tour')) {
                 // Handle other tour preferences
                 const elementId = key.replace(/([A-Z])/g, '-$1').toLowerCase();
@@ -1689,6 +1711,16 @@ class App {
             this.hideError();
             
             const tourPreferences = this.getTourPreferences();
+            console.log('Tour preferences:', tourPreferences);
+            
+            // Validate custom theme selections before generating tour
+            if (tourPreferences.tourTheme === 'custom') {
+                const hasValidCustomSelection = this.validateCustomFilters();
+                if (!hasValidCustomSelection) {
+                    throw new Error('Custom theme requires at least one specific filter selection. Please select planets, sectors, or factions before starting your tour.');
+                }
+            }
+            
             const tour = await this.generateTour(tourPreferences);
             
             if (tour) {
@@ -1787,6 +1819,41 @@ class App {
                 throw new Error('Major Order theme is not currently available. No active Major Order or no eligible planets found. Please select a different theme.');
             }
         }
+
+        // Handle Custom theme with priority filtering
+        if (preferences.tourTheme === 'custom') {
+            console.log('Processing custom theme with preferences:', preferences);
+            
+            // Validate that at least one filter is set
+            const hasCustomSelections = 
+                (preferences.customPlanets && preferences.customPlanets.length > 0 && !preferences.customPlanets.every(p => p === 'all')) ||
+                (preferences.customSectors && preferences.customSectors.length > 0 && !preferences.customSectors.every(s => s === 'all')) ||
+                (preferences.customFactions && preferences.customFactions.length > 0 && !preferences.customFactions.every(f => f === 'all'));
+                
+            if (!hasCustomSelections) {
+                throw new Error('Custom theme requires at least one specific filter selection (planets, sectors, or factions). Please make your selections and try again.');
+            }
+            
+            const customThemedPlanets = this.selectCustomThemedPlanets(enemyPlanets, preferences);
+            
+            if (customThemedPlanets.length === 0) {
+                throw new Error('Custom theme configuration resulted in no available planets. Please adjust your filter selections.');
+            }
+            
+            console.log(`Custom theme selected ${customThemedPlanets.length} planets:`, customThemedPlanets.map(p => p.name));
+            
+            return {
+                type: 'custom',
+                name: 'Custom Campaign',
+                planets: customThemedPlanets,
+                weight: 100,
+                customFilters: {
+                    planets: preferences.customPlanets || [],
+                    sectors: preferences.customSectors || [],
+                    factions: preferences.customFactions || []
+                }
+            };
+        }
         
         // Filter planets by faction preference if specified
         let filteredPlanets = enemyPlanets;
@@ -1824,12 +1891,6 @@ class App {
                 }
             },
             {
-                type: 'mission_type_themed',
-                name: 'Strategic Operations',
-                weight: 15,
-                condition: () => filteredPlanets.length >= 3
-            },
-            {
                 type: 'biome_specific',
                 name: 'Environmental Campaign',
                 weight: 15,
@@ -1840,12 +1901,6 @@ class App {
                 name: 'Biome Mastery Campaign',
                 weight: 20,
                 condition: () => apiService.getBiomeGroupsWithMultiplePlanets(filteredPlanets).length > 0
-            },
-            {
-                type: 'liberation_defense',
-                name: 'War Front Campaign',
-                weight: 10,
-                condition: () => filteredPlanets.length >= 4
             }
         ];
 
@@ -1873,10 +1928,9 @@ class App {
                     'single_planet': 'Single Planet Conquest',
                     'sector_campaign': 'Sector Campaign', 
                     'faction_focused': 'Faction Focus',
-                    'mission_type_themed': 'Mission Type Focus',
                     'biome_specific': 'Environmental Focus',
                     'biome_group_themed': 'Biome Group Focus',
-                    'liberation_defense': 'War Front Operations'
+                    'custom': 'Custom Theme'
                 };
                 
                 const themeName = themeNames[preferences.tourTheme] || preferences.tourTheme;
@@ -1958,6 +2012,357 @@ class App {
         return Object.keys(biomeCounts).filter(biome => biomeCounts[biome] >= 2);
     }
 
+    async populateCustomFilters() {
+        try {
+            const gameData = await apiService.getAllGameData();
+            this.lastGameData = gameData;
+            const planets = gameData.planets;
+            
+            const enemyPlanets = apiService.getEnemyPlanets(planets);
+            
+            this.populateCustomPlanetsFilter(enemyPlanets);
+            this.populateCustomSectorsFilter(enemyPlanets);
+            
+            console.log(`Populated custom filters with ${enemyPlanets.length} available planets`);
+            
+        } catch (error) {
+            console.error('Error populating custom filters:', error);
+        }
+    }
+
+    populateCustomPlanetsFilter(planets) {
+        const planetsContainer = document.getElementById('custom-planets-container');
+        if (!planetsContainer) return;
+
+        // Keep the "Any Available Planet" option and clear the rest
+        const existingOptions = planetsContainer.querySelectorAll('.checkbox-item:not(:first-child)');
+        existingOptions.forEach(option => option.remove());
+
+        // Sort planets alphabetically
+        const sortedPlanets = [...planets].sort((a, b) => a.name.localeCompare(b.name));
+
+        // Add planet checkboxes
+        sortedPlanets.forEach(planet => {
+            const checkboxItem = document.createElement('div');
+            checkboxItem.className = 'checkbox-item';
+            
+            const faction = apiService.getCurrentEnemy(planet);
+            const checkboxId = `custom-planet-${planet.id}`;
+            
+            checkboxItem.innerHTML = `
+                <input type="checkbox" id="${checkboxId}" value="${planet.id}" data-name="${planet.name}" data-faction="${faction}" data-sector="${planet.sector}">
+                <label for="${checkboxId}">${planet.name} (${faction} - ${planet.sector})</label>
+            `;
+            
+            planetsContainer.appendChild(checkboxItem);
+        });
+    }
+
+    populateCustomSectorsFilter(planets) {
+        const sectorsContainer = document.getElementById('custom-sectors-container');
+        if (!sectorsContainer) return;
+
+        // Keep the "Any Available Sector" option and clear the rest
+        const existingOptions = sectorsContainer.querySelectorAll('.checkbox-item:not(:first-child)');
+        existingOptions.forEach(option => option.remove());
+
+        // Get unique sectors with planet counts
+        const sectorCounts = {};
+        const sectorFactions = {};
+
+        planets.forEach(planet => {
+            const sector = planet.sector || 'Unknown Sector';
+            const faction = apiService.getCurrentEnemy(planet);
+            
+            sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+            
+            if (!sectorFactions[sector]) {
+                sectorFactions[sector] = new Set();
+            }
+            sectorFactions[sector].add(faction);
+        });
+
+        // Sort sectors alphabetically
+        const sortedSectors = Object.keys(sectorCounts).sort((a, b) => a.localeCompare(b));
+
+        // Add sector checkboxes
+        sortedSectors.forEach(sector => {
+            const checkboxItem = document.createElement('div');
+            checkboxItem.className = 'checkbox-item';
+            
+            const planetCount = sectorCounts[sector];
+            const factions = Array.from(sectorFactions[sector]).join(', ');
+            const checkboxId = `custom-sector-${sector.replace(/\s+/g, '-').toLowerCase()}`;
+            
+            checkboxItem.innerHTML = `
+                <input type="checkbox" id="${checkboxId}" value="${sector}" data-factions="${factions}">
+                <label for="${checkboxId}">${sector} (${planetCount} planet${planetCount !== 1 ? 's' : ''} - ${factions})</label>
+            `;
+            
+            sectorsContainer.appendChild(checkboxItem);
+        });
+    }
+
+    setupCustomFilterListeners() {
+        // Add event listeners for all custom filter checkboxes
+        const planetsContainer = document.getElementById('custom-planets-container');
+        const sectorsContainer = document.getElementById('custom-sectors-container');
+        const factionsContainer = document.getElementById('custom-factions-container');
+
+        if (planetsContainer) {
+            planetsContainer.addEventListener('change', (e) => {
+                this.handleCustomFilterChange(e, 'planet');
+            });
+        }
+
+        if (sectorsContainer) {
+            sectorsContainer.addEventListener('change', (e) => {
+                this.handleCustomFilterChange(e, 'sector');
+            });
+        }
+
+        if (factionsContainer) {
+            factionsContainer.addEventListener('change', (e) => {
+                this.handleCustomFilterChange(e, 'faction');
+            });
+        }
+    }
+
+    handleCustomFilterChange(event, filterType) {
+        const checkbox = event.target;
+        if (checkbox.type !== 'checkbox') return;
+
+        const isAllOption = checkbox.value === 'all';
+        const container = checkbox.closest('.checkbox-container');
+        
+        if (isAllOption) {
+            // If "All" option is checked/unchecked, update all other checkboxes in the same container
+            const otherCheckboxes = container.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+            otherCheckboxes.forEach(cb => {
+                cb.checked = false;
+                cb.disabled = checkbox.checked;
+            });
+        } else {
+            // If a specific option is checked, uncheck the "All" option
+            const allCheckbox = container.querySelector('input[value="all"]');
+            if (allCheckbox) {
+                allCheckbox.checked = false;
+            }
+        }
+
+        // Update cascading filters based on priority system
+        this.updateCascadingFilters();
+        this.validateCustomFilters();
+        this.savePreferences();
+    }
+
+    updateCascadingFilters() {
+        // Planets > Sectors > Factions priority system
+        const selectedPlanets = this.getSelectedCustomFilters('planet');
+        const selectedSectors = this.getSelectedCustomFilters('sector');
+        const selectedFactions = this.getSelectedCustomFilters('faction');
+
+        // If specific planets are selected, filter sectors and update display
+        if (selectedPlanets.length > 0 && !selectedPlanets.includes('all')) {
+            this.updateSectorFiltersByPlanets(selectedPlanets);
+        }
+        
+        // If sectors are selected (and no specific planets), filter planet display
+        else if (selectedSectors.length > 0 && !selectedSectors.includes('all')) {
+            this.updatePlanetFiltersBySectors(selectedSectors);
+        }
+        
+        // If factions are selected (and no specific planets/sectors), filter both
+        else if (selectedFactions.length > 0 && !selectedFactions.includes('all')) {
+            this.updatePlanetFiltersByFactions(selectedFactions);
+            this.updateSectorFiltersByFactions(selectedFactions);
+        }
+    }
+
+    getSelectedCustomFilters(filterType) {
+        const container = document.getElementById(`custom-${filterType}s-container`);
+        if (!container) {
+            console.warn(`Custom ${filterType} container not found`);
+            return [];
+        }
+
+        const checkedBoxes = container.querySelectorAll('input[type="checkbox"]:checked');
+        const selected = Array.from(checkedBoxes).map(cb => cb.value);
+        console.log(`Selected custom ${filterType}s:`, selected);
+        return selected;
+    }
+
+    updateSectorFiltersByPlanets(selectedPlanetIds) {
+        if (!this.lastGameData) return;
+        
+        const planets = apiService.getEnemyPlanets(this.lastGameData.planets);
+        const relevantSectors = new Set();
+        
+        selectedPlanetIds.forEach(planetId => {
+            const planet = planets.find(p => p.id.toString() === planetId);
+            if (planet) {
+                relevantSectors.add(planet.sector);
+            }
+        });
+
+        // Dim irrelevant sector options
+        const sectorsContainer = document.getElementById('custom-sectors-container');
+        const sectorCheckboxes = sectorsContainer.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        
+        sectorCheckboxes.forEach(checkbox => {
+            const isRelevant = relevantSectors.has(checkbox.value);
+            checkbox.parentElement.style.opacity = isRelevant ? '1' : '0.5';
+            if (!isRelevant) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    updatePlanetFiltersBySectors(selectedSectors) {
+        if (!this.lastGameData) return;
+        
+        const planets = apiService.getEnemyPlanets(this.lastGameData.planets);
+        
+        // Dim irrelevant planet options
+        const planetsContainer = document.getElementById('custom-planets-container');
+        const planetCheckboxes = planetsContainer.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        
+        planetCheckboxes.forEach(checkbox => {
+            const planetSector = checkbox.dataset.sector;
+            const isRelevant = selectedSectors.includes(planetSector);
+            checkbox.parentElement.style.opacity = isRelevant ? '1' : '0.5';
+            if (!isRelevant) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    updatePlanetFiltersByFactions(selectedFactions) {
+        // Dim irrelevant planet options
+        const planetsContainer = document.getElementById('custom-planets-container');
+        const planetCheckboxes = planetsContainer.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        
+        planetCheckboxes.forEach(checkbox => {
+            const planetFaction = checkbox.dataset.faction;
+            const isRelevant = selectedFactions.includes(planetFaction);
+            checkbox.parentElement.style.opacity = isRelevant ? '1' : '0.5';
+            if (!isRelevant) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    updateSectorFiltersByFactions(selectedFactions) {
+        // Dim irrelevant sector options based on faction presence
+        const sectorsContainer = document.getElementById('custom-sectors-container');
+        const sectorCheckboxes = sectorsContainer.querySelectorAll('input[type="checkbox"]:not([value="all"])');
+        
+        sectorCheckboxes.forEach(checkbox => {
+            const sectorFactions = (checkbox.dataset.factions || '').split(', ');
+            const hasRelevantFaction = sectorFactions.some(faction => selectedFactions.includes(faction));
+            checkbox.parentElement.style.opacity = hasRelevantFaction ? '1' : '0.5';
+            if (!hasRelevantFaction) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    validateCustomFilters() {
+        const selectedPlanets = this.getSelectedCustomFilters('planet');
+        const selectedSectors = this.getSelectedCustomFilters('sector');
+        const selectedFactions = this.getSelectedCustomFilters('faction');
+
+        const validationElement = document.getElementById('custom-filter-validation');
+        
+        // Check if at least one filter is selected (excluding "all" options)
+        const hasSpecificSelections = 
+            (selectedPlanets.length > 0 && !selectedPlanets.every(p => p === 'all')) ||
+            (selectedSectors.length > 0 && !selectedSectors.every(s => s === 'all')) ||
+            (selectedFactions.length > 0 && !selectedFactions.every(f => f === 'all'));
+
+        if (validationElement) {
+            if (hasSpecificSelections) {
+                validationElement.style.display = 'none';
+            } else {
+                validationElement.style.display = 'block';
+            }
+        }
+
+        return hasSpecificSelections;
+    }
+
+    applyCustomFilterPreferences(key, savedValues) {
+        if (!Array.isArray(savedValues) || savedValues.length === 0) return;
+
+        const filterType = key.replace('custom', '').toLowerCase();
+        const container = document.getElementById(`custom-${filterType}-container`);
+        
+        if (!container) return;
+
+        // Apply saved selections
+        savedValues.forEach(value => {
+            const checkbox = container.querySelector(`input[value="${value}"]`);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+
+        // Update cascade and validation after applying preferences
+        setTimeout(() => {
+            this.updateCascadingFilters();
+            this.validateCustomFilters();
+        }, 100);
+    }
+
+    selectCustomThemedPlanets(allEnemyPlanets, preferences) {
+        const selectedPlanets = preferences.customPlanets || [];
+        const selectedSectors = preferences.customSectors || [];
+        const selectedFactions = preferences.customFactions || [];
+
+        console.log('Custom theme filters:', { selectedPlanets, selectedSectors, selectedFactions });
+
+        // Priority system: Planets (highest) > Sectors (medium) > Factions (lowest)
+        
+        // Priority 1: If specific planets are selected, use only those
+        if (selectedPlanets.length > 0 && !selectedPlanets.includes('all')) {
+            const specificPlanets = allEnemyPlanets.filter(planet => 
+                selectedPlanets.includes(planet.id.toString())
+            );
+            console.log(`Custom theme: Using ${specificPlanets.length} specific planets (Priority 1)`);
+            return specificPlanets;
+        }
+
+        // Priority 2: If no specific planets but sectors are selected, filter by sectors
+        if (selectedSectors.length > 0 && !selectedSectors.includes('all')) {
+            let sectorFilteredPlanets = allEnemyPlanets.filter(planet => 
+                selectedSectors.includes(planet.sector)
+            );
+
+            // Apply faction filter if also specified
+            if (selectedFactions.length > 0 && !selectedFactions.includes('all')) {
+                sectorFilteredPlanets = sectorFilteredPlanets.filter(planet => 
+                    selectedFactions.includes(apiService.getCurrentEnemy(planet))
+                );
+            }
+            
+            console.log(`Custom theme: Using ${sectorFilteredPlanets.length} planets from selected sectors (Priority 2)`);
+            return sectorFilteredPlanets;
+        }
+
+        // Priority 3: If only factions are selected (or "all" for planets/sectors), filter by factions
+        if (selectedFactions.length > 0 && !selectedFactions.includes('all')) {
+            const factionFilteredPlanets = allEnemyPlanets.filter(planet => 
+                selectedFactions.includes(apiService.getCurrentEnemy(planet))
+            );
+            console.log(`Custom theme: Using ${factionFilteredPlanets.length} planets from selected factions (Priority 3)`);
+            return factionFilteredPlanets;
+        }
+
+        // Fallback: If all filters are set to "all" or no filters selected, return all planets
+        console.log(`Custom theme: No specific filters selected, using all ${allEnemyPlanets.length} available planets`);
+        return allEnemyPlanets;
+    }
+
     determineTourLength(tourLengthPreference) {
         // Handle custom tour length
         if (tourLengthPreference === 'custom') {
@@ -2026,23 +2431,6 @@ class App {
             }
         }
 
-        // For mission_type_themed, determine the mission type based on available API data
-        if (campaignTheme.type === 'mission_type_themed' && !this.selectedMissionType) {
-            const availableTypes = [];
-            const hasLiberation = availablePlanets.some(p => !p.isDefense);
-            const hasDefense = availablePlanets.some(p => p.isDefense);
-            
-            if (hasLiberation) availableTypes.push('liberation');
-            if (hasDefense) availableTypes.push('defense');
-            
-            if (availableTypes.length === 0) {
-                // Fallback if no specific types available
-                this.selectedMissionType = 'liberation';
-            } else {
-                this.selectedMissionType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-            }
-            console.log(`Mission type theme: Selected "${this.selectedMissionType}" based on available API data`);
-        }
 
         // Get themed planet selection based on campaign theme
         const themedPlanets = this.selectThemedPlanets(availablePlanets, campaignTheme, tourLength, preferences);
@@ -2092,6 +2480,10 @@ class App {
         switch (campaignTheme.type) {
             case 'major_order':
                 // Use Major Order planets (already sorted by player count)
+                return campaignTheme.planets || [];
+
+            case 'custom':
+                // Use pre-filtered custom themed planets
                 return campaignTheme.planets || [];
                 
             case 'single_planet':
@@ -2182,14 +2574,6 @@ class App {
                 campaignTheme.selectedBiomeGroup = selectedBiomeGroup; // Store for debugging
                 return apiService.getPlanetsInBiomeGroup(availablePlanets, selectedBiomeGroup);
                 
-            case 'mission_type_themed':
-                // Will be filtered later in applyThemeToMission based on selectedMissionType
-                return availablePlanets;
-                
-            case 'liberation_defense':
-                // Use all planets since we respect their natural API defense status
-                return availablePlanets;
-                
             default:
                 return availablePlanets;
         }
@@ -2206,18 +2590,6 @@ class App {
             return candidatePlanets[0]; // Always the same planet
         }
 
-        // For mission_type_themed, filter by the selected mission type using API data
-        if (campaignTheme.type === 'mission_type_themed' && this.selectedMissionType) {
-            const wantDefense = this.selectedMissionType === 'defense';
-            const typedPlanets = candidatePlanets.filter(planet => planet.isDefense === wantDefense);
-            
-            if (typedPlanets.length > 0) {
-                candidatePlanets = typedPlanets;
-                console.log(`Mission type theme: Found ${candidatePlanets.length} planets with ${this.selectedMissionType} status from API`);
-            } else {
-                console.warn(`Mission type theme: No planets found with ${this.selectedMissionType} status from API, using any available planets`);
-            }
-        }
 
         return candidatePlanets[Math.floor(Math.random() * candidatePlanets.length)];
     }
@@ -2238,23 +2610,6 @@ class App {
                 }
                 // Always use the API's accurate defense status
                 planet.isDefense = originalDefenseStatus;
-                break;
-                
-            case 'mission_type_themed':
-                // Focus on planets that match the selected mission type from API data
-                if (!this.selectedMissionType) {
-                    // For mission_type_themed, selection is already done in selectThemedPlanets
-                    // This is a fallback in case it wasn't set properly
-                    this.selectedMissionType = 'liberation';
-                    console.log(`Mission type theme: Fallback to "${this.selectedMissionType}"`);
-                }
-                // Respect the API's accurate defense status - only use planets that match the theme
-                console.log(`Mission type theme: Using API defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
-                break;
-                
-            case 'liberation_defense':
-                // Respect API data - don't override the natural defense status
-                console.log(`Liberation/Defense theme: Using API defense status (${planet.isDefense ? 'DEFENSE' : 'LIBERATION'})`);
                 break;
                 
             case 'sector_campaign':
@@ -2326,6 +2681,88 @@ class App {
         return 3;
     }
 
+    updateDualProgressIndicators(tour, animated = true) {
+        const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        
+        // Update campaign level progress
+        const campaignProgressFill = document.getElementById('campaign-progress-fill');
+        const currentMissionNumber = document.getElementById('current-mission-number');
+        const totalMissions = document.getElementById('total-missions');
+        
+        // Update operation level progress  
+        const operationProgressFill = document.getElementById('operation-progress-fill');
+        const currentMissionInOperation = document.getElementById('current-mission-in-operation');
+        const totalMissionsInOperation = document.getElementById('total-missions-in-operation');
+        
+        if (campaignProgressFill && currentMissionNumber && totalMissions) {
+            // Calculate campaign progress percentage
+            const campaignProgress = (tour.currentMissionIndex / tour.missions.length) * 100;
+            
+            // Update text
+            currentMissionNumber.textContent = tour.currentMissionIndex + 1;
+            totalMissions.textContent = tour.missions.length;
+            
+            // Animate progress bar if requested
+            if (animated) {
+                this.animateProgressBar(campaignProgressFill, campaignProgress);
+            } else {
+                campaignProgressFill.style.width = campaignProgress + '%';
+            }
+        }
+        
+        if (operationProgressFill && currentMissionInOperation && totalMissionsInOperation) {
+            // Calculate operation progress percentage  
+            const operationProgress = ((this.currentMissionInOperation + 1) / missionsInThisOperation) * 100;
+            
+            // Update text
+            currentMissionInOperation.textContent = this.currentMissionInOperation + 1;
+            totalMissionsInOperation.textContent = missionsInThisOperation;
+            
+            // Animate progress bar if requested
+            if (animated) {
+                this.animateProgressBar(operationProgressFill, operationProgress);
+            } else {
+                operationProgressFill.style.width = operationProgress + '%';
+            }
+        }
+    }
+    
+    animateProgressBar(progressFill, targetPercentage) {
+        // Add shimmer animation class
+        progressFill.classList.add('animating');
+        
+        // Update progress bar width with CSS transition
+        progressFill.style.width = targetPercentage + '%';
+        
+        // Remove shimmer animation after transition completes
+        setTimeout(() => {
+            progressFill.classList.remove('animating');
+        }, 1000);
+    }
+    
+    animateMissionProgression(isOperationComplete = false) {
+        const missionContainer = document.getElementById('current-mission-container');
+        const progressTexts = document.querySelectorAll('.progress-text');
+        
+        // Add progression animation to mission container
+        missionContainer.classList.add('mission-progressing');
+        
+        // Add updating animation to progress texts
+        progressTexts.forEach(text => text.classList.add('updating'));
+        
+        // Apply operation complete animation if this completes an operation
+        if (isOperationComplete) {
+            missionContainer.classList.add('operation-complete');
+        }
+        
+        // Clean up animations after they complete
+        setTimeout(() => {
+            missionContainer.classList.remove('mission-progressing', 'operation-complete');
+            progressTexts.forEach(text => text.classList.remove('updating'));
+        }, 1500);
+    }
+
     planetHasAvailableRegions(planet) {
         return (planet.availableRegions && planet.availableRegions.length > 0) ||
                (planet.activeRegions && planet.activeRegions.length > 0) ||
@@ -2358,12 +2795,6 @@ class App {
                 'Operation: Enemy Eradication',
                 'Operation: Threat Neutralization'
             ],
-            'mission_type_themed': [
-                'Operation: Strategic Objectives',
-                'Campaign: Tactical Supremacy',
-                'Operation: Military Excellence',
-                'Operation: Combat Mastery'
-            ],
             'biome_specific': [
                 'Operation: Environmental Adaptation',
                 'Campaign: Terrain Mastery',
@@ -2375,12 +2806,6 @@ class App {
                 'Campaign: Biome Conquest',
                 'Operation: Terrain Domination',
                 'Operation: Climate Warfare'
-            ],
-            'liberation_defense': [
-                'Operation: War Front',
-                'Campaign: Battle Lines',
-                'Operation: Front Defense',
-                'Operation: Strategic Warfare'
             ]
         };
 
@@ -2436,7 +2861,11 @@ class App {
             tourFactionPreference: document.getElementById('tour-faction-preference')?.value || 'any',
             tourMissionTypePreference: document.getElementById('tour-mission-type-preference')?.value || 'either',
             tourPlanet: document.getElementById('tour-planet')?.value || 'random',
-            tourSector: document.getElementById('tour-sector')?.value || 'random'
+            tourSector: document.getElementById('tour-sector')?.value || 'random',
+            // Custom theme filters
+            customPlanets: this.getSelectedCustomFilters('planet'),
+            customSectors: this.getSelectedCustomFilters('sector'),
+            customFactions: this.getSelectedCustomFilters('faction')
         };
     }
 
@@ -2489,11 +2918,6 @@ class App {
                 `A series of strikes against the ${factionName} threat has been ordered by Super Earth High Command. Your Tour of War will pursue them across multiple worlds, demonstrating that Managed Democracy relentlessly pursues her enemies. You will begin this campaign of focused elimination on the world of ${mission.planet.name}.`,
                 `Your tour targets ${factionName} forces wherever they may be found. Multiple operations against this singular threat will prove that Democracy's wrath, when focused, becomes an unstoppable force. Your hunt begins on ${mission.planet.name}, show no mercy to the invaders.`
             ],
-            'mission_type_themed': [
-                `Helldiver. Your tour emphasizes tactical excellence through specialized operations. The Ministry of Defense requires demonstration of specific combat doctrines across multiple battlefields. Your success will validate Strategic Command's operational theories.`,
-                `Strategic Command has designed your tour to showcase particular military capabilities. Multiple missions of similar operational focus will prove the effectiveness of concentrated tactical approaches. Begin this demonstration of military excellence on ${mission.planet.name}.`,
-                `Your Tour of War represents focused tactical development, Helldiver. Through repeated application of specific operational methods across multiple battlefields, you will perfect the art of Democratic warfare. The first lesson begins on ${mission.planet.name}.`
-            ],
             'biome_specific': [
                 `Helldiver. Your tour will test Democracy's adaptability across similar environmental conditions. The Ministry of Science requires data on combat effectiveness in ${apiService.getPlanetBiome(mission.planet).toLowerCase()} environments. Multiple operations in these conditions will prove that the Will of Freedom adapts to any climate.`,
                 `Super Earth High Command has selected you for specialized terrain operations. Your tour will span multiple worlds sharing similar biomes, demonstrating that Democracy thrives in any ecosystem. The ${factionName} will learn that no environment provides sanctuary from Freedom.`,
@@ -2503,11 +2927,6 @@ class App {
                 `Helldiver. Your tour will demonstrate mastery across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environments. You will be the proof that Democracy adapts to any region. Multiple operations through similar conditions will show that no environment can resist Freedom's advance.`,
                 `The Ministry of Science has selected you for specialized biome group operations. Your tour spans multiple worlds within the ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environmental category, proving that Managed Democracy conquers entire classes of terrain. The ${factionName} will learn that no environmental offers protection from Democracy's Judgement.`,
                 `Your Tour of War represents complete environmental mastery, Helldiver. Through operations across ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} worlds, you will prove that Democracy adapts not just to individual planets, but to entire biome families. No environmental category can hide our enemies from Justice.`
-            ],
-            'liberation_defense': [
-                `Helldiver. Your tour spans the full spectrum of Democratic warfare - from seizing enemy territory to defending liberated ground. Multiple operations will demonstrate that Freedom both advances and endures.`,
-                `Super Earth High Command requires proof of tactical versatility. Your Tour of War alternates between offensive liberation and defensive operations, showing that Democracy both conquers and protects. Begin this demonstration of military balance on ${mission.planet.name}.`,
-                `Your tour represents the complete cycle of Democratic warfare. Through alternating liberation and defense operations, you will prove that Freedom both expands and consolidates its gains. The balance of war begins on ${mission.planet.name}.`
             ]
         };
 
@@ -2557,6 +2976,9 @@ class App {
         document.getElementById('tour-name').textContent = tour.name;
         document.getElementById('current-mission-number').textContent = tour.currentMissionIndex + 1;
         document.getElementById('total-missions').textContent = tour.missions.length;
+        
+        // Update dual progress indicators (without animation for initial display)
+        this.updateDualProgressIndicators(tour, false);
         
         // Handle tour description for imported campaigns
         const tourDescriptionElement = document.getElementById('tour-description');
@@ -2778,13 +3200,24 @@ class App {
     }
 
     async handleMissionComplete() {
+        // Check if completing this mission completes the operation
+        const tour = this.currentTour;
+        const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        const isOperationComplete = (this.currentMissionInOperation + 1) >= missionsInThisOperation;
+        
+        // Animate mission progression
+        this.animateMissionProgression(isOperationComplete);
+        
         // In Stats mode, show stats dialog first
         if (this.statsMode) {
             // Show stats dialog for the completed mission
             this.showStatsTrackingDialog();
         } else {
-            // Normal tour mode - proceed directly
-            this.proceedToNextMission();
+            // Normal tour mode - proceed directly with a small delay to show animation
+            setTimeout(() => {
+                this.proceedToNextMission();
+            }, 500);
         }
     }
 
@@ -2835,11 +3268,6 @@ class App {
                 `Excellent work against ${factionName} forces, Helldiver. Your focused campaign continues on ${mission.planet.name}, where more of these specific enemies await elimination. Each operation brings the complete eradication of this threat closer.`,
                 `The ${factionName} flee before your advancing tour, but Democracy's reach extends across all worlds. ${mission.planet.name} harbors more of these targets. Continue this focused elimination campaign until none remain.`
             ],
-            'mission_type_themed': [
-                `Your tactical demonstration continues to exceed expectations. The next phase brings you to ${mission.planet.name}, where similar operational methods will further validate Strategic Command's doctrines. Perfect your techniques, Helldiver.`,
-                `Operational excellence continues across multiple battlefields. Your tour advances to ${mission.planet.name}, where repeated application of proven tactics will demonstrate the superiority of focused military doctrine. Continue this tactical mastery.`,
-                `Strategic Command observes your operational consistency with approval. ${mission.planet.name} provides the next testing ground for these specialized tactics. Your methodical approach proves Democracy's military superiority.`
-            ],
             'biome_specific': [
                 `Environmental mastery proceeds successfully across similar terrain conditions. Your tour continues to ${mission.planet.name}, where the same environmental challenges await conquest. Perfect your adaptation to these specific conditions, Helldiver.`,
                 `Excellent terrain adaptation, Helldiver. The next phase of environmental operations brings you to ${mission.planet.name}, where similar biome conditions will further test Democracy's environmental supremacy. No climate can resist Freedom.`,
@@ -2849,11 +3277,6 @@ class App {
                 `Biome group mastery advances according to plan, Helldiver. Your tour continues to ${mission.planet.name}, another world within the ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environmental category. Each operation proves Democracy's adaptability across entire terrain classifications.`,
                 `Excellent environmental group adaptation. The next phase brings you to ${mission.planet.name}, where similar biome group conditions will further demonstrate your mastery of ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} environments. Environmental Command observes your systematic conquest of entire biome families.`,
                 `Your domination of ${this.getBiomeGroupName(apiService.getBiomeGroup(mission.planet))} terrain types continues to exceed expectations. ${mission.planet.name} represents another world within this environmental category where you will prove that Democracy conquers not just individual biomes, but entire environmental classifications.`
-            ],
-            'liberation_defense': [
-                `The cycle of Democratic warfare continues, Helldiver. Your tour now brings you to ${mission.planet.name} for the next phase of balanced operations. Whether seizing ground or holding it, you demonstrate Freedom's complete tactical spectrum.`,
-                `Operational balance defines true military mastery. Your tour advances to ${mission.planet.name}, where the next phase of liberation or defense operations will further prove Democracy's tactical versatility. The war front evolves with your success.`,
-                `Your demonstration of tactical completeness continues across multiple battlefields. ${mission.planet.name} awaits the next phase of operations, whether advancing Freedom's borders or consolidating its gains. Both are equally vital to Democracy.`
             ]
         };
 
