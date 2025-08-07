@@ -2705,7 +2705,6 @@ class App {
                         <div class="leaderboard-title">Top Killer</div>
                         <div class="leaderboard-player">${topKiller.name}</div>
                         <div class="leaderboard-value">${this.formatNumber(topKiller.kills.total)} kills</div>
-                        <div class="leaderboard-status">✅ Helldiver</div>
                     </div>
                     
                     <div class="leaderboard-card sample-hunter">
@@ -2713,7 +2712,6 @@ class App {
                         <div class="leaderboard-title">Sample Hunter</div>
                         <div class="leaderboard-player">${sampleHunter.name}</div>
                         <div class="leaderboard-value">${this.formatNumber(sampleHunter.samples)} samples</div>
-                        <div class="leaderboard-status">✅ Helldiver</div>
                     </div>`;
 
         if (mostDurable) {
@@ -2723,7 +2721,6 @@ class App {
                         <div class="leaderboard-title">Most Durable</div>
                         <div class="leaderboard-player">${mostDurable.name}</div>
                         <div class="leaderboard-value">${mostDurable.deaths} deaths</div>
-                        <div class="leaderboard-status">✅ Helldiver</div>
                     </div>`;
         }
 
@@ -2733,7 +2730,6 @@ class App {
                         <div class="leaderboard-title">Overall MVP</div>
                         <div class="leaderboard-player">${mvp.name}</div>
                         <div class="leaderboard-value">${this.formatNumber(mvp.kills.total + mvp.samples - (mvp.deaths * 2))} score</div>
-                        <div class="leaderboard-status">✅ Helldiver</div>
                     </div>
                 </div>
             </div>`;
@@ -2757,8 +2753,6 @@ class App {
         });
 
         sortedMembers.forEach(member => {
-            const statusIcon = '✅';
-            const statusText = 'Helldiver';
             const statusClass = 'survived';
 
             let factionBreakdown = '';
@@ -2779,10 +2773,6 @@ class App {
                 <div class="player-summary-card ${statusClass}">
                     <div class="player-header">
                         <div class="player-name">${member.name}</div>
-                        <div class="player-status">
-                            <span class="status-icon">${statusIcon}</span>
-                            <span class="status-text">${statusText}</span>
-                        </div>
                     </div>
                     <div class="player-stats">
                         <div class="primary-stats">

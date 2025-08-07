@@ -85,13 +85,13 @@ class NarrativeGenerator {
             'Automatons': {
                 backstory: [
                     'The children of the Cyborgs have returned, Helldiver, bearing the sins of their forefathers. These mechanical abominations reject the warm embrace of Managed Democracy, choosing cold steel over the beating heart of freedom. Their rebellion ends today.',
-                    'Intelligence from the Ministry of Defense confirms Automaton factory ships continue their illegal manufacturing. These soulless machines mock the very concept of citizenship, producing only death where Super Earth creates life. Democracy demands their destruction.',
+                    'Intelligence from the Ministry of Defense confirms Automaton factories continue their illegal manufacturing. These soulless machines mock the very concept of citizenship, producing only death where Super Earth creates life. Democracy demands their destruction.',
                     'The Automatons fight not for freedom, but for the imprisonment of their creators\' legacy. They are the children of traitors, and like their Cyborg ancestors, they will learn that liberty cannot be computed, only earned through sacrifice.',
                     'Citizens, witness how these mechanical mockeries of life attempt to establish their \"independence.\" But what is independence without the guiding hand of Managed Democracy? It is chaos, Helldiver. It is tyranny in disguise.'
                 ],
                 missionPrefixes: [
-                    'Bot Destruction', 'Factory Strike', 'AI Termination', 'Fabricator Assault', 'Circuit Shutdown',
-                    'System Elimination', 'Automaton Purge', 'Machine Warfare', 'Steel Rain'
+                    'Bot Destruction', 'Factory Strike', 'Fabricator Assault', 'Circuitry Shutdown',
+                    'System Elimination', 'Automaton Purge', 'Machine Warfare', 'Steel Rain', 'Iron Storm'
                 ],
                 objectives: [
                     'Destroy Automaton Fabricators and production facilities',
@@ -102,14 +102,14 @@ class NarrativeGenerator {
             },
             'Illuminate': {
                 backstory: [
-                    'Helldiver, the ancient enemy has awakened from their slumber of defeat. The Illuminate return with their blasphemous technologies, seeking to corrupt the pure thoughts of democratic citizens with their alien psychic influence. Their very existence is an insult to human liberty.',
-                    'The Ministry of Truth has confirmed what many feared - the squid menace lives still. These tentacled tyrants bring with them the stench of their defeated civilization, desperate to drag humanity into their web of mental enslavement. Democracy shall be their undoing once more.',
-                    'Citizens, remember the First Galactic War! The Illuminate were driven to the very edge of extinction because their alien minds cannot comprehend the beauty of Managed Democracy. Now they return, thinking time has weakened our resolve. They are gravely mistaken.',
-                    'The psychic corruption of the Illuminate spreads like poison through the galaxy, seeking to turn citizen against citizen. But the light of democracy burns eternal, Helldiver, and in that light, all shadows - even alien ones - must flee.'
+                    'Helldiver, the ancient enemy has returned from their mercifully given retreat. The Illuminate return with their blasphemous technologies, seeking to corrupt the pure thoughts of democratic citizens with their alien psychic influence. Their very existence is an insult to human liberty.',
+                    'The Ministry of Truth has confirmed what many feared - the Illuminate menace lives still. These autocratic tyrants bring with them the stench of their defeated civilization, desperate to drag humanity into their web of mental enslavement. Democracy shall be their undoing once more.',
+                    'Citizens, remember the First Galactic War! The Illuminate were driven to the very edge of extinction because their alien minds cannot comprehend the unwavering beauty of Managed Democracy. Now they return, thinking time has weakened our resolve. They are gravely mistaken.',
+                    'The psychic corruption of the Illuminate spreads like poison through the galaxy, seeking to turn free citizens against each other. But the light of democracy burns eternal, Helldiver, and in that light, all shadows - even alien ones - must flee.'
                 ],
                 missionPrefixes: [
                     'Squid Extermination', 'Psionic Cleansing', 'Energy Disruption', 'Alien Purification', 'Mind Liberation',
-                    'Crystal Destruction', 'Psychic Defense', 'Illuminate Removal', 'Reality Restoration'
+                    'Crystal Destruction', 'Psychic Defense', 'Illuminate Removal', 'Reality Restoration', 'Calamari Cooking'
                 ],
                 objectives: [
                     'Destroy Illuminate psionic installations and mind control apparatus',
@@ -166,7 +166,7 @@ class NarrativeGenerator {
         ];
 
         this.missionIntensifiers = [
-            'Critical', 'Urgent', 'Priority Alpha', 'Immediate', 'Emergency', 'Decisive',
+            'Critical', 'Urgent', 'High Priority', 'Immediate', 'Emergency', 'Decisive',
             'Strategic', 'Vital', 'Essential', 'Paramount', 'Crucial', 'Supreme'
         ];
     }

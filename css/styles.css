@@ -1225,10 +1225,6 @@ footer {
     font-weight: bold;
 }
 
-.leaderboard-status {
-    font-size: 0.9rem;
-    margin-top: 0.5rem;
-}
 
 .individual-performance {
     margin: 2rem 0;
@@ -2048,10 +2044,6 @@ footer {
     margin-bottom: 0.5rem;
 }
 
-.leaderboard-status {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
 
 .top-killer {
     border-left: 4px solid #ff4444;
