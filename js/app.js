@@ -6,6 +6,9 @@ class App {
         this.currentTour = null;
         this.statsMode = false;
         this.squadMembers = [];
+        // Per-mission tracking for multi-user group progression
+        this.missionHistory = []; // Track squad composition and stats per individual mission
+        this.currentMissionInOperation = 0; // Track which mission within the current operation (0, 1, or 2)
         // Background data loading state
         this.backgroundDataLoading = false;
         this.backgroundDataReady = false;
@@ -625,12 +628,232 @@ class App {
                     },
                     samples: 0,
                     deaths: 0,
-                    missionsCompleted: 0
+                    missionsCompleted: 0,
+                    status: 'active' // active, inactive, departed
                 });
             }
         }
         
+        // Initialize mission history
+        this.missionHistory = [];
+        this.currentMissionInOperation = 0;
+        
         console.log('Initialized squad members for Stats mode:', this.squadMembers);
+    }
+
+    // Show squad management dialog before each mission
+    showSquadManagementDialog() {
+        if (!this.statsMode) {
+            return Promise.resolve(true);
+        }
+
+        return new Promise((resolve) => {
+            const dialog = document.createElement('div');
+            dialog.className = 'squad-management-dialog';
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+
+            const tour = this.currentTour;
+            const operationIndex = tour.currentMissionIndex;
+            const missionInOp = this.currentMissionInOperation + 1;
+
+            dialog.innerHTML = `
+                <div style="background: #1a1a1a; color: white; padding: 2rem; border-radius: 8px; max-width: 600px; width: 90%;">
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <h3>Squad Management</h3>
+                        <p>Operation ${operationIndex + 1}, Mission ${missionInOp}</p>
+                        <p style="color: #cccccc; font-size: 0.9rem;">Configure who's participating in this mission</p>
+                    </div>
+                    <div id="squad-management-list" style="margin-bottom: 1.5rem;">
+                        <!-- Squad member list will be populated here -->
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <button id="add-new-member-btn" style="background: #4CAF50; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Add New Member</button>
+                        <input type="text" id="new-member-name" placeholder="Enter player name" style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #2a2a2a; color: white; display: none;" maxlength="30">
+                    </div>
+                    <div style="text-align: center;">
+                        <button id="proceed-with-squad" style="background: #2196F3; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem;">Proceed</button>
+                        <button id="cancel-squad-management" style="background: #666; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(dialog);
+            this.populateSquadManagementList();
+
+            // Event listeners
+            document.getElementById('add-new-member-btn').addEventListener('click', () => {
+                const input = document.getElementById('new-member-name');
+                const btn = document.getElementById('add-new-member-btn');
+                if (input.style.display === 'none') {
+                    input.style.display = 'inline-block';
+                    input.focus();
+                    btn.textContent = 'Add';
+                } else {
+                    this.addNewSquadMember(input.value.trim());
+                    input.value = '';
+                    input.style.display = 'none';
+                    btn.textContent = 'Add New Member';
+                    this.populateSquadManagementList();
+                }
+            });
+
+            document.getElementById('proceed-with-squad').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve(true);
+            });
+
+            document.getElementById('cancel-squad-management').addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve(false);
+            });
+
+            document.getElementById('new-member-name').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('add-new-member-btn').click();
+                }
+            });
+        });
+    }
+
+    populateSquadManagementList() {
+        const container = document.getElementById('squad-management-list');
+        if (!container) return;
+
+        container.innerHTML = '';
+        
+        // Sort squad members: active first, then inactive, then departed
+        const sortedMembers = [...this.squadMembers].sort((a, b) => {
+            const statusOrder = { 'active': 0, 'inactive': 1, 'departed': 2 };
+            const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+            if (statusDiff !== 0) return statusDiff;
+            // If same status, sort alphabetically by name
+            return a.name.localeCompare(b.name);
+        });
+        
+        sortedMembers.forEach((member, sortedIndex) => {
+            // Find the original index in the unsorted array
+            const originalIndex = this.squadMembers.findIndex(m => m.name === member.name);
+            const memberDiv = document.createElement('div');
+            memberDiv.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem;
+                margin-bottom: 0.5rem;
+                background: #2a2a2a;
+                border-radius: 4px;
+                border-left: 4px solid ${member.status === 'active' ? '#4CAF50' : member.status === 'inactive' ? '#FF9800' : '#666'};
+            `;
+
+            memberDiv.innerHTML = `
+                <div style="flex: 1;">
+                    <strong>${member.name}</strong>
+                    <small style="color: #999; margin-left: 0.5rem;">(${member.missionsCompleted} missions)</small>
+                </div>
+                <div>
+                    <select data-member-index="${originalIndex}" style="background: #1a1a1a; color: white; border: 1px solid #555; border-radius: 4px; padding: 0.25rem;">
+                        <option value="active" ${member.status === 'active' ? 'selected' : ''}>Active</option>
+                        <option value="inactive" ${member.status === 'inactive' ? 'selected' : ''}>Sitting Out</option>
+                        <option value="departed" ${member.status === 'departed' ? 'selected' : ''}>Left Squad</option>
+                    </select>
+                </div>
+            `;
+
+            const select = memberDiv.querySelector('select');
+            select.addEventListener('change', (e) => {
+                const memberIndex = parseInt(e.target.dataset.memberIndex);
+                this.squadMembers[memberIndex].status = e.target.value;
+                this.populateSquadManagementList(); // Refresh to update colors and sorting
+            });
+
+            container.appendChild(memberDiv);
+        });
+    }
+
+    addNewSquadMember(name) {
+        if (!name || this.squadMembers.find(m => m.name === name)) return;
+        
+        this.squadMembers.push({
+            name: name,
+            kills: {
+                total: 0,
+                byFaction: {
+                    "Terminids": 0,
+                    "Automatons": 0,
+                    "Illuminate": 0
+                }
+            },
+            samples: 0,
+            deaths: 0,
+            missionsCompleted: 0,
+            status: 'active'
+        });
+    }
+
+    getActiveSquadMembers() {
+        return this.squadMembers.filter(member => member.status === 'active');
+    }
+
+    // Helper method to get comprehensive mission stats from history
+    getMissionHistoryStats() {
+        if (!this.missionHistory.length) return null;
+        
+        const stats = {
+            totalMissionsPlayed: this.missionHistory.length,
+            operationsPlayed: [...new Set(this.missionHistory.map(m => m.operationIndex))].length,
+            squadEvolution: [],
+            participationRates: {},
+            missionBreakdown: []
+        };
+        
+        // Track squad evolution
+        let lastSquad = [];
+        this.missionHistory.forEach((mission, index) => {
+            const currentSquad = mission.squadComposition.map(m => m.name).sort();
+            if (JSON.stringify(currentSquad) !== JSON.stringify(lastSquad)) {
+                stats.squadEvolution.push({
+                    missionIndex: index,
+                    operationIndex: mission.operationIndex,
+                    missionInOperation: mission.missionInOperation,
+                    squad: currentSquad,
+                    timestamp: mission.timestamp
+                });
+                lastSquad = currentSquad;
+            }
+        });
+        
+        // Calculate participation rates
+        const allPlayers = [...new Set(this.missionHistory.flatMap(m => m.squadComposition.map(s => s.name)))];
+        allPlayers.forEach(player => {
+            const participated = this.missionHistory.filter(m => m.squadComposition.some(s => s.name === player));
+            stats.participationRates[player] = {
+                missionsParticipated: participated.length,
+                participationRate: (participated.length / this.missionHistory.length * 100).toFixed(1) + '%'
+            };
+        });
+        
+        // Mission breakdown with squad info
+        stats.missionBreakdown = this.missionHistory.map(mission => ({
+            operationIndex: mission.operationIndex + 1,
+            missionInOperation: mission.missionInOperation + 1,
+            squad: mission.squadComposition.map(s => s.name),
+            planet: mission.planet,
+            faction: mission.faction,
+            timestamp: mission.timestamp
+        }));
+        
+        return stats;
     }
 
 
@@ -639,12 +862,12 @@ class App {
         const tour = this.currentTour;
         const currentOperation = tour.missions[tour.currentMissionIndex];
         
-        // Aggregate stats per squad member
-        const memberStats = {};
+        // Collect stats per squad member for this mission
+        const missionStats = {};
+        const activeMembers = this.getActiveSquadMembers();
         
         statsInputs.forEach(input => {
             const memberIndex = parseInt(input.dataset.memberIndex);
-            const missionIndex = parseInt(input.dataset.missionIndex);
             const statType = input.dataset.statType;
             let value = parseInt(input.value) || 0;
             
@@ -656,23 +879,40 @@ class App {
             if (statType === 'deaths' && value < 0) value = 0;
             if (statType === 'deaths' && value > 50) value = 50;
             
-            if (!memberStats[memberIndex]) {
-                memberStats[memberIndex] = {
+            if (!missionStats[memberIndex]) {
+                missionStats[memberIndex] = {
                     kills: 0,
                     samples: 0,
                     deaths: 0
                 };
             }
             
-            memberStats[memberIndex][statType] += value;
+            missionStats[memberIndex][statType] = value;
         });
         
+        // Save mission to history
+        const missionRecord = {
+            operationIndex: tour.currentMissionIndex,
+            missionInOperation: this.currentMissionInOperation,
+            squadComposition: activeMembers.map(member => ({
+                name: member.name,
+                status: member.status
+            })),
+            stats: missionStats,
+            faction: currentOperation.faction,
+            planet: currentOperation.planet?.name || 'Unknown',
+            missionType: currentOperation.missionType || 'Unknown',
+            timestamp: new Date().toISOString()
+        };
+        
+        this.missionHistory.push(missionRecord);
+        
         // Apply stats to squad members
-        Object.keys(memberStats).forEach(memberIndex => {
+        Object.keys(missionStats).forEach(memberIndex => {
             const member = this.squadMembers[parseInt(memberIndex)];
-            const stats = memberStats[memberIndex];
+            const stats = missionStats[memberIndex];
             
-            if (member) {
+            if (member && member.status === 'active') {
                 // Update kills (total and by faction)
                 member.kills.total += stats.kills;
                 if (currentOperation.faction && stats.kills > 0) {
@@ -685,10 +925,10 @@ class App {
                 // Update deaths
                 if (stats.deaths > 0) {
                     member.deaths += stats.deaths;
-                    console.log(`${member.name} died ${stats.deaths} time${stats.deaths > 1 ? 's' : ''} this operation. Total deaths: ${member.deaths}`);
+                    console.log(`${member.name} died ${stats.deaths} time${stats.deaths > 1 ? 's' : ''} this mission. Total deaths: ${member.deaths}`);
                 }
                 
-                // Update missions completed
+                // Update missions completed (only for active members)
                 member.missionsCompleted++;
                 
                 console.log(`Updated stats for ${member.name}:`, {
@@ -702,8 +942,8 @@ class App {
         
         this.hideStatsTrackingDialog();
         
-        // Proceed to next mission
-        this.proceedToNextMission();
+        // Show squad management for next mission (unless it's the very last mission)
+        this.handlePostStatsSquadManagement();
     }
 
     handleSkipStats() {
@@ -713,6 +953,26 @@ class App {
         });
         
         this.hideStatsTrackingDialog();
+        
+        // Show squad management for next mission (unless it's the very last mission)
+        this.handlePostStatsSquadManagement();
+    }
+
+    async handlePostStatsSquadManagement() {
+        const tour = this.currentTour;
+        const isLastMissionInOperation = this.currentMissionInOperation >= 2;
+        const isLastOperationInTour = tour.currentMissionIndex >= tour.missions.length - 1;
+        
+        // Show squad management dialog unless this is the very last mission of the entire tour
+        const isVeryLastMission = isLastMissionInOperation && isLastOperationInTour;
+        
+        if (!isVeryLastMission) {
+            // Show squad management for the next mission
+            const proceed = await this.showSquadManagementDialog();
+            if (!proceed) return;
+        }
+        
+        // Now proceed to the next mission
         this.proceedToNextMission();
     }
 
@@ -734,6 +994,17 @@ class App {
 
         const dialog = document.getElementById('stats-tracking-dialog');
         const statsContainer = document.getElementById('stats-inputs-container');
+        const tour = this.currentTour;
+        
+        // Update dialog title to show current mission context
+        const title = document.getElementById('stats-dialog-title');
+        const description = document.getElementById('stats-dialog-description');
+        if (title) {
+            title.textContent = `Operation ${tour.currentMissionIndex + 1}, Mission ${this.currentMissionInOperation + 1}: Statistics`;
+        }
+        if (description) {
+            description.textContent = `Enter statistics for each squad member during this mission (leave blank to skip):`;
+        }
         
         // Clear existing inputs
         statsContainer.innerHTML = '';
@@ -747,12 +1018,13 @@ class App {
     generateStatsInputs(container) {
         const tour = this.currentTour;
         const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionInOp = this.currentMissionInOperation + 1;
         
-        // Always allow 3 stat entries per player per operation
-        const operationMissions = 3;
+        // Only show stats for active squad members for this single mission
+        const activeMembers = this.getActiveSquadMembers();
         
-        // Create stats input for each squad member
-        this.squadMembers.forEach((member, memberIndex) => {
+        // Create stats input for each active squad member
+        activeMembers.forEach((member, memberIndex) => {
             // Create member section
             const memberSection = document.createElement('div');
             memberSection.className = 'member-stats-section';
@@ -762,69 +1034,67 @@ class App {
             memberHeader.textContent = member.name;
             memberSection.appendChild(memberHeader);
             
-            // Create stats inputs for each mission in the operation
-            for (let missionIndex = 0; missionIndex < operationMissions; missionIndex++) {
-                const missionDiv = document.createElement('div');
-                missionDiv.className = 'mission-stats';
-                
-                const missionHeader = document.createElement('h5');
-                missionHeader.className = 'mission-stats-header';
-                missionHeader.textContent = operationMissions > 1 ? `Mission ${missionIndex + 1}` : 'Operation Stats';
-                missionDiv.appendChild(missionHeader);
-                
-                const statsGrid = document.createElement('div');
-                statsGrid.className = 'stats-input-grid';
-                
-                // Kills input
-                const killsLabel = document.createElement('label');
-                killsLabel.textContent = 'Kills:';
-                const killsInput = document.createElement('input');
-                killsInput.type = 'number';
-                killsInput.className = 'stats-input kills-input';
-                killsInput.placeholder = '0';
-                killsInput.min = '0';
-                killsInput.max = '9999';
-                killsInput.dataset.memberIndex = memberIndex;
-                killsInput.dataset.missionIndex = missionIndex;
-                killsInput.dataset.statType = 'kills';
-                
-                // Samples input
-                const samplesLabel = document.createElement('label');
-                samplesLabel.textContent = 'Samples:';
-                const samplesInput = document.createElement('input');
-                samplesInput.type = 'number';
-                samplesInput.className = 'stats-input samples-input';
-                samplesInput.placeholder = '0';
-                samplesInput.min = '0';
-                samplesInput.max = '999';
-                samplesInput.dataset.memberIndex = memberIndex;
-                samplesInput.dataset.missionIndex = missionIndex;
-                samplesInput.dataset.statType = 'samples';
-                
-                // Deaths input
-                const deathsLabel = document.createElement('label');
-                deathsLabel.textContent = 'Deaths:';
-                const deathsInput = document.createElement('input');
-                deathsInput.type = 'number';
-                deathsInput.className = 'stats-input deaths-input';
-                deathsInput.placeholder = '0';
-                deathsInput.min = '0';
-                deathsInput.max = '50';
-                deathsInput.dataset.memberIndex = memberIndex;
-                deathsInput.dataset.missionIndex = missionIndex;
-                deathsInput.dataset.statType = 'deaths';
-                
-                // Add inputs to grid
-                statsGrid.appendChild(killsLabel);
-                statsGrid.appendChild(killsInput);
-                statsGrid.appendChild(samplesLabel);
-                statsGrid.appendChild(samplesInput);
-                statsGrid.appendChild(deathsLabel);
-                statsGrid.appendChild(deathsInput);
-                
-                missionDiv.appendChild(statsGrid);
-                memberSection.appendChild(missionDiv);
-            }
+            // Create stats inputs for this single mission only
+            const missionDiv = document.createElement('div');
+            missionDiv.className = 'mission-stats';
+            
+            const missionHeader = document.createElement('h5');
+            missionHeader.className = 'mission-stats-header';
+            missionHeader.textContent = `Operation ${tour.currentMissionIndex + 1}, Mission ${missionInOp}`;
+            missionDiv.appendChild(missionHeader);
+            
+            const statsGrid = document.createElement('div');
+            statsGrid.className = 'stats-input-grid';
+            
+            // Store the actual squad member index for this active member
+            const actualMemberIndex = this.squadMembers.findIndex(m => m.name === member.name);
+            
+            // Kills input
+            const killsLabel = document.createElement('label');
+            killsLabel.textContent = 'Kills:';
+            const killsInput = document.createElement('input');
+            killsInput.type = 'number';
+            killsInput.className = 'stats-input kills-input';
+            killsInput.placeholder = '0';
+            killsInput.min = '0';
+            killsInput.max = '9999';
+            killsInput.dataset.memberIndex = actualMemberIndex;
+            killsInput.dataset.statType = 'kills';
+            
+            // Samples input
+            const samplesLabel = document.createElement('label');
+            samplesLabel.textContent = 'Samples:';
+            const samplesInput = document.createElement('input');
+            samplesInput.type = 'number';
+            samplesInput.className = 'stats-input samples-input';
+            samplesInput.placeholder = '0';
+            samplesInput.min = '0';
+            samplesInput.max = '999';
+            samplesInput.dataset.memberIndex = actualMemberIndex;
+            samplesInput.dataset.statType = 'samples';
+            
+            // Deaths input
+            const deathsLabel = document.createElement('label');
+            deathsLabel.textContent = 'Deaths:';
+            const deathsInput = document.createElement('input');
+            deathsInput.type = 'number';
+            deathsInput.className = 'stats-input deaths-input';
+            deathsInput.placeholder = '0';
+            deathsInput.min = '0';
+            deathsInput.max = '50';
+            deathsInput.dataset.memberIndex = actualMemberIndex;
+            deathsInput.dataset.statType = 'deaths';
+            
+            // Add inputs to grid
+            statsGrid.appendChild(killsLabel);
+            statsGrid.appendChild(killsInput);
+            statsGrid.appendChild(samplesLabel);
+            statsGrid.appendChild(samplesInput);
+            statsGrid.appendChild(deathsLabel);
+            statsGrid.appendChild(deathsInput);
+            
+            missionDiv.appendChild(statsGrid);
+            memberSection.appendChild(missionDiv);
             
             container.appendChild(memberSection);
         });
@@ -844,26 +1114,37 @@ class App {
 
     proceedToNextMission() {
         const tour = this.currentTour;
-        const completedMissionIndex = tour.currentMissionIndex;
-        tour.currentMissionIndex++;
         
-        if (tour.currentMissionIndex >= tour.missions.length) {
-            // Tour completed!
-            this.completeTour();
-        } else {
-            // Check if the completed mission has transition text for imported campaigns
-            if (tour.metadata?.isImportedCampaign && completedMissionIndex < tour.missions.length) {
-                const completedMission = tour.missions[completedMissionIndex];
-                if (completedMission.transitionText && completedMission.transitionText.trim()) {
-                    // Show transition text before next mission briefing
-                    this.displayTransitionBriefing(completedMission.transitionText);
-                    return;
-                }
+        // Check if we need to move to next mission within operation or next operation
+        this.currentMissionInOperation++;
+        
+        if (this.currentMissionInOperation >= 3) {
+            // Move to next operation
+            this.currentMissionInOperation = 0;
+            const completedOperationIndex = tour.currentMissionIndex;
+            tour.currentMissionIndex++;
+            
+            if (tour.currentMissionIndex >= tour.missions.length) {
+                // Tour completed!
+                this.completeTour();
+                return;
             }
             
-            // Show briefing for next mission
+            // Show briefing for next operation
             this.displayNextMissionBriefing();
+        } else {
+            // Still missions remaining in current operation, show squad management and then next mission
+            this.displayCurrentTourMission();
         }
+    }
+
+    async displayCurrentTourMissionWithSquadManagement() {
+        // Show squad management dialog first
+        const proceed = await this.showSquadManagementDialog();
+        if (!proceed) return;
+        
+        // Then display the mission
+        this.displayCurrentTourMission();
     }
 
     displayTransitionBriefing(transitionText) {
@@ -2279,6 +2560,17 @@ class App {
         if (missionCompleteBtn && missionFailedBtn) {
             missionCompleteBtn.style.display = 'inline-block';
             missionFailedBtn.style.display = 'inline-block';
+            
+            // Update button text to reflect current mission progress
+            const missionInOp = this.currentMissionInOperation + 1;
+            const isLastMissionInOperation = this.currentMissionInOperation >= 2;
+            
+            if (isLastMissionInOperation) {
+                missionCompleteBtn.textContent = `Operation Complete - Progress Tour`;
+            } else {
+                missionCompleteBtn.textContent = `Mission ${missionInOp} Complete - Next Mission`;
+            }
+            
             console.log('Mission action buttons made visible');
         } else {
             console.error('Mission action buttons not found:', { missionCompleteBtn, missionFailedBtn });
@@ -2462,9 +2754,10 @@ class App {
         });
     }
 
-    handleMissionComplete() {
-        // In Stats mode, show stats tracking dialog first
-        if (this.statsMode && this.squadMembers.length > 0) {
+    async handleMissionComplete() {
+        // In Stats mode, show stats dialog first
+        if (this.statsMode) {
+            // Show stats dialog for the completed mission
             this.showStatsTrackingDialog();
         } else {
             // Normal tour mode - proceed directly
@@ -2476,9 +2769,12 @@ class App {
         this.failTour();
     }
 
-    displayNextMissionBriefing() {
+    async displayNextMissionBriefing() {
         const tour = this.currentTour;
         const mission = tour.missions[tour.currentMissionIndex];
+        
+        // Squad management is handled after stats entry, not here
+        
         const briefing = this.generateNextMissionBriefing(mission, tour.currentMissionIndex);
         
         // Show briefing
@@ -2672,6 +2968,12 @@ class App {
         // Generate Per-Player Summaries
         statsHTML += this.generatePerPlayerSummaries();
         
+        // Generate Mission History Summary if available
+        const historyStats = this.getMissionHistoryStats();
+        if (historyStats) {
+            statsHTML += this.generateMissionHistorySummary(historyStats);
+        }
+        
         stats.innerHTML = statsHTML;
 
         this.updateDetailedStatsCompletionScreen(tour);
@@ -2727,7 +3029,7 @@ class App {
         leaderboardHTML += `
                     <div class="leaderboard-card overall-mvp">
                         <div class="leaderboard-icon">🌟</div>
-                        <div class="leaderboard-title">Overall MVP</div>
+                        <div class="leaderboard-title">Most Free Helldiver</div>
                         <div class="leaderboard-player">${mvp.name}</div>
                         <div class="leaderboard-value">${this.formatNumber(mvp.kills.total + mvp.samples - (mvp.deaths * 2))} score</div>
                     </div>
@@ -2805,6 +3107,46 @@ class App {
             </div>`;
 
         return summariesHTML;
+    }
+
+    generateMissionHistorySummary(historyStats) {
+        if (!historyStats) return '';
+        
+        let summaryHTML = `
+            <div class="mission-history-summary">
+                <h4>Squad Evolution</h4>
+                <div class="history-stats">
+                    <p><strong>Total Missions:</strong> ${historyStats.totalMissionsPlayed}</p>
+                    <p><strong>Operations:</strong> ${historyStats.operationsPlayed}</p>
+                    <p><strong>Squad Changes:</strong> ${historyStats.squadEvolution.length}</p>
+                </div>
+        `;
+        
+        if (historyStats.squadEvolution.length > 1) {
+            summaryHTML += '<h5>Squad Timeline</h5><div class="squad-timeline">';
+            historyStats.squadEvolution.forEach((change, index) => {
+                summaryHTML += `
+                    <div class="timeline-entry">
+                        <strong>Op ${change.operationIndex + 1}, Mission ${change.missionInOperation + 1}:</strong> 
+                        ${change.squad.join(', ')}
+                    </div>
+                `;
+            });
+            summaryHTML += '</div>';
+        }
+        
+        // Participation rates
+        summaryHTML += '<h5>Participation Rates</h5><div class="participation-rates">';
+        Object.entries(historyStats.participationRates).forEach(([player, stats]) => {
+            summaryHTML += `
+                <div class="participation-entry">
+                    <strong>${player}:</strong> ${stats.missionsParticipated}/${historyStats.totalMissionsPlayed} missions (${stats.participationRate})
+                </div>
+            `;
+        });
+        summaryHTML += '</div></div>';
+        
+        return summaryHTML;
     }
 
 
@@ -3011,6 +3353,16 @@ class App {
         if (appState.squadMembers && Array.isArray(appState.squadMembers)) {
             this.squadMembers = appState.squadMembers;
         }
+        
+        // Restore mission history
+        if (appState.missionHistory && Array.isArray(appState.missionHistory)) {
+            this.missionHistory = appState.missionHistory;
+        }
+        
+        // Restore current mission in operation
+        if (appState.currentMissionInOperation !== undefined) {
+            this.currentMissionInOperation = appState.currentMissionInOperation;
+        }
     }
 
     // Campaign Export/Import functionality
@@ -3037,7 +3389,9 @@ class App {
             appState: {
                 statsMode: this.statsMode,
                 squadMembers: this.squadMembers ? JSON.parse(JSON.stringify(this.squadMembers)) : [],
-                squadMemberNames: this.getSquadMemberNames()
+                squadMemberNames: this.getSquadMemberNames(),
+                missionHistory: this.missionHistory ? JSON.parse(JSON.stringify(this.missionHistory)) : [],
+                currentMissionInOperation: this.currentMissionInOperation || 0
             }
         };
 
@@ -3090,11 +3444,15 @@ class App {
         }
 
         // Calculate aggregate stats for export
+        const totalMissionsPlayed = this.missionHistory.length;
+        const totalOperationsPlayed = Math.ceil(totalMissionsPlayed / 3);
+        
         const aggregateStats = {
             totalKills: 0,
             totalSamples: 0,
             totalDeaths: 0,
-            totalMissions: this.currentTour.missions.length,
+            totalMissions: totalMissionsPlayed,
+            totalOperations: totalOperationsPlayed,
             factionKills: {
                 "Terminids": 0,
                 "Automatons": 0,
@@ -3149,9 +3507,9 @@ class App {
                 name: this.currentTour.name,
                 theme: this.currentTour.theme,
                 completedAt: new Date().toISOString(),
-                operationsCompleted: this.currentTour.missions.length,
-                factions: [...new Set(this.currentTour.missions.map(m => m.faction))],
-                planets: [...new Set(this.currentTour.missions.map(m => m.planet))],
+                operationsCompleted: totalOperationsPlayed,
+                factions: [...new Set(this.missionHistory.map(m => m.faction))],
+                planets: [...new Set(this.missionHistory.map(m => m.planet))],
                 difficulties: [...new Set(this.currentTour.missions.map(m => m.difficulty))],
                 biomes: [...new Set(this.currentTour.missions.map(m => m.biome).filter(b => b))]
             },
@@ -3162,7 +3520,8 @@ class App {
                     player: mvpPlayer,
                     score: mvpScore
                 }
-            }
+            },
+            missionHistory: this.missionHistory ? JSON.parse(JSON.stringify(this.missionHistory)) : []
         };
 
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -5115,13 +5474,13 @@ class App {
         if (mvp.player) {
             statsHTML += `
                 <div class="stats-section mvp-section">
-                    <h4>🏆 Most Valuable Helldiver</h4>
+                    <h4>🏆 Most Free Helldiver</h4>
                     <div class="mvp-display">
                         <div class="mvp-trophy">🏆</div>
                         <div class="mvp-info">
                             <div class="mvp-name">${mvp.player}</div>
                             <div class="mvp-score">Score: ${Math.round(mvp.score)}</div>
-                            <div class="mvp-subtitle">Outstanding performance for Democracy!</div>
+                            <div class="mvp-subtitle">Outstanding performance in the name of Managed Democracy!</div>
                         </div>
                     </div>
                 </div>
