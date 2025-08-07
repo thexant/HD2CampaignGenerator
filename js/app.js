@@ -51,8 +51,16 @@ class App {
             campaignBuilderBtn.addEventListener('click', () => this.handleShowCampaignBuilder());
         }
 
+        const viewResultsBtn = document.getElementById('view-results');
+        if (viewResultsBtn) {
+            viewResultsBtn.addEventListener('click', () => this.handleShowResultsViewer());
+        }
+
         // Campaign Builder navigation
         this.setupCampaignBuilderListeners();
+        
+        // Results Viewer navigation
+        this.setupResultsViewerListeners();
 
         // Custom length toggle
         const campaignLengthSelect = document.getElementById('campaign-length');
@@ -123,13 +131,15 @@ class App {
             tourThemeSelect.addEventListener('change', (e) => this.handleTourThemeChange(e));
         }
 
-        // Tour faction preference change handler to update planet list
+        // Tour faction preference change handler to update planet and sector lists
         const tourFactionPreferenceSelect = document.getElementById('tour-faction-preference');
         if (tourFactionPreferenceSelect) {
             tourFactionPreferenceSelect.addEventListener('change', () => {
                 const tourTheme = document.getElementById('tour-theme')?.value;
                 if (tourTheme === 'single_planet') {
-                    this.populatePlanetOptions();
+                    this.populateTourPlanetOptions();
+                } else if (tourTheme === 'sector_campaign') {
+                    this.populateSectorOptions();
                 }
             });
         }
@@ -246,9 +256,13 @@ class App {
 
 
         // Stats completion screen buttons
+        const exportResultsBtn = document.getElementById('export-results');
         const startNewStatsTourBtn = document.getElementById('start-new-stats-tour');
         const returnToCampaignsStatsBtn = document.getElementById('return-to-campaigns-stats');
 
+        if (exportResultsBtn) {
+            exportResultsBtn.addEventListener('click', () => this.handleExportResults());
+        }
         if (startNewStatsTourBtn) {
             startNewStatsTourBtn.addEventListener('click', () => this.handleStartNewTour());
         }
@@ -348,6 +362,7 @@ class App {
     handleTourThemeChange(event) {
         const tourFactionGroup = document.getElementById('tour-faction-group');
         const tourPlanetGroup = document.getElementById('tour-planet-group');
+        const tourSectorGroup = document.getElementById('tour-sector-group');
         const majorOrderInfoGroup = document.getElementById('major-order-info-group');
         
         if (tourFactionGroup) {
@@ -361,9 +376,18 @@ class App {
         if (tourPlanetGroup) {
             if (event.target.value === 'single_planet') {
                 tourPlanetGroup.style.display = 'block';
-                this.populatePlanetOptions();
+                this.populateTourPlanetOptions();
             } else {
                 tourPlanetGroup.style.display = 'none';
+            }
+        }
+        
+        if (tourSectorGroup) {
+            if (event.target.value === 'sector_campaign') {
+                tourSectorGroup.style.display = 'block';
+                this.populateSectorOptions();
+            } else {
+                tourSectorGroup.style.display = 'none';
             }
         }
         
@@ -379,11 +403,12 @@ class App {
         this.savePreferences();
     }
 
-    async populatePlanetOptions() {
+    async populateTourPlanetOptions() {
         try {
             const gameData = await apiService.getAllGameData();
             this.lastGameData = gameData; // Store for campaign builder
             const planets = gameData.planets;
+            
             const enemyPlanets = apiService.getEnemyPlanets(planets);
             
             // Filter by faction preference if specified
@@ -399,10 +424,7 @@ class App {
             // Sort planets alphabetically
             availablePlanets.sort((a, b) => a.name.localeCompare(b.name));
             
-            console.log(`WORKING GENERATOR DEBUG: Found ${availablePlanets.length} planets for faction ${factionPreference}:`);
-            availablePlanets.forEach(planet => {
-                console.log(`- ${planet.name}: liberation=${planet.liberation}%, owner=${planet.currentOwner}, disabled=${planet.disabled}, hasRegions=${planet.availableRegions?.length || 0}`);
-            });
+            console.log(`Found ${availablePlanets.length} accessible planets for planet theme dropdown`);
             
             const planetSelect = document.getElementById('tour-planet');
             if (planetSelect) {
@@ -420,6 +442,47 @@ class App {
             }
         } catch (error) {
             console.error('Error populating planet options:', error);
+        }
+    }
+
+    async populateSectorOptions() {
+        try {
+            const gameData = await apiService.getAllGameData();
+            this.lastGameData = gameData; // Store for consistency
+            const planets = gameData.planets;
+            
+            // Get faction preference
+            const factionPreference = document.getElementById('tour-faction-preference')?.value || 'any';
+            
+            // Get sectors filtered by faction and capturable status
+            const availableSectors = apiService.getSectorsFilteredByFactionAndCapturable(planets, factionPreference);
+            const sectorCounts = apiService.getSectorPlanetCounts(planets, availableSectors);
+            
+            console.log(`Found ${availableSectors.length} sectors for faction ${factionPreference}:`, availableSectors);
+            
+            // Sort sectors alphabetically
+            availableSectors.sort((a, b) => a.localeCompare(b));
+            
+            const sectorSelect = document.getElementById('tour-sector');
+            if (sectorSelect) {
+                // Clear existing options except the first one
+                sectorSelect.innerHTML = '<option value="random">Any Available Sector</option>';
+                
+                // Add sector options with planet counts
+                availableSectors.forEach(sector => {
+                    const option = document.createElement('option');
+                    option.value = sector;
+                    const planetCount = sectorCounts[sector] || 0;
+                    option.textContent = `${sector} (${planetCount} planet${planetCount !== 1 ? 's' : ''})`;
+                    sectorSelect.appendChild(option);
+                });
+                
+                sectorSelect.disabled = false;
+                console.log(`Populated sector options: ${availableSectors.length} sectors available`);
+            }
+            
+        } catch (error) {
+            console.error('Error populating sector options:', error);
         }
     }
 
@@ -935,7 +998,8 @@ class App {
             tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all',
             tourFactionPreference: document.getElementById('tour-faction-preference')?.value || 'any',
             tourMissionTypePreference: document.getElementById('tour-mission-type-preference')?.value || 'either',
-            tourPlanet: document.getElementById('tour-planet')?.value || 'random'
+            tourPlanet: document.getElementById('tour-planet')?.value || 'random',
+            tourSector: document.getElementById('tour-sector')?.value || 'random'
         };
     }
 
@@ -957,6 +1021,16 @@ class App {
         const nameElement = document.getElementById('campaign-name');
         if (nameElement) {
             nameElement.textContent = campaign.name;
+        }
+
+        const descriptionElement = document.getElementById('campaign-description');
+        if (descriptionElement) {
+            if (campaign.description && campaign.description.trim()) {
+                descriptionElement.textContent = campaign.description;
+                descriptionElement.style.display = 'block';
+            } else {
+                descriptionElement.style.display = 'none';
+            }
         }
 
         const goalElement = document.getElementById('campaign-main-goal');
@@ -1023,14 +1097,17 @@ class App {
             </div>
             
             <div class="mission-objectives">
-                <h4>Primary Objective: ${mission.primaryObjective.name || 'Unknown'}</h4>
+                <h4>Primary Objective: ${mission.customPrimaryTitle || mission.primaryObjective.name || 'Unknown'}</h4>
                 <ul>
-                    <li>${mission.primaryObjective.description}</li>
+                    <li>${mission.customPrimaryDescription || mission.primaryObjective.description}</li>
                 </ul>
                 
                 <h4>Secondary Objectives</h4>
                 <ul>
-                    ${mission.secondaryObjectives.map(obj => `<li>${obj.description}</li>`).join('')}
+                    ${mission.customSecondaryDescription ? 
+                        mission.customSecondaryDescription.split('\n').map(line => line.trim()).filter(line => line).map(line => `<li>${line}</li>`).join('') : 
+                        mission.secondaryObjectives.map(obj => `<li>${obj.description}</li>`).join('')
+                    }
                 </ul>
                 
                 ${mission.modifier ? `
@@ -1749,17 +1826,41 @@ class App {
                 return Array(tourLength).fill(singlePlanet);
                 
             case 'sector_campaign':
-                // Pick planets from same sector
-                const sectorsWithMultiple = this.getSectorsWithMultiplePlanets(availablePlanets);
-                const selectedSector = sectorsWithMultiple[Math.floor(Math.random() * sectorsWithMultiple.length)];
-                const sectorPlanets = availablePlanets.filter(planet => planet.sector === selectedSector);
+                // Pick planets from same sector, filtered by faction preference
+                const factionPreference = preferences.tourFactionPreference || 'any';
+                console.log(`Sector campaign: Using faction preference "${factionPreference}"`);
                 
-                // Ensure we actually have multiple planets for this sector theme
-                if (sectorPlanets.length < 2) {
-                    console.warn(`Sector ${selectedSector} only has ${sectorPlanets.length} planet(s), falling back to general planet selection`);
+                // Get sectors filtered by both faction and capturable status
+                const availableSectors = apiService.getSectorsFilteredByFactionAndCapturable(availablePlanets, factionPreference);
+                console.log(`Available sectors for faction ${factionPreference}:`, availableSectors);
+                
+                if (availableSectors.length === 0) {
+                    console.warn('No sectors available for the selected faction, falling back to general planet selection');
                     return availablePlanets;
                 }
                 
+                // Check if user selected a specific sector
+                let selectedSector;
+                const userSelectedSector = preferences.tourSector || campaignTheme.selectedSector;
+                if (userSelectedSector && userSelectedSector !== 'random') {
+                    selectedSector = userSelectedSector;
+                    console.log(`Using user-selected sector: ${selectedSector}`);
+                } else {
+                    // Random sector selection from available ones
+                    selectedSector = availableSectors[Math.floor(Math.random() * availableSectors.length)];
+                    console.log(`Randomly selected sector: ${selectedSector}`);
+                }
+                
+                const sectorPlanets = availablePlanets.filter(planet => planet.sector === selectedSector);
+                
+                // Ensure we actually have planets for this sector theme
+                if (sectorPlanets.length === 0) {
+                    console.warn(`Sector ${selectedSector} has no available planets, falling back to general planet selection`);
+                    return availablePlanets;
+                }
+                
+                console.log(`Sector ${selectedSector} has ${sectorPlanets.length} available planets`);
+                campaignTheme.selectedSector = selectedSector; // Store for narrative generation
                 return sectorPlanets;
                 
             case 'faction_focused':
@@ -2032,7 +2133,8 @@ class App {
             tourDifficulty: document.getElementById('tour-difficulty')?.value || 'all',
             tourFactionPreference: document.getElementById('tour-faction-preference')?.value || 'any',
             tourMissionTypePreference: document.getElementById('tour-mission-type-preference')?.value || 'either',
-            tourPlanet: document.getElementById('tour-planet')?.value || 'random'
+            tourPlanet: document.getElementById('tour-planet')?.value || 'random',
+            tourSector: document.getElementById('tour-sector')?.value || 'random'
         };
     }
 
@@ -2153,6 +2255,15 @@ class App {
         document.getElementById('tour-name').textContent = tour.name;
         document.getElementById('current-mission-number').textContent = tour.currentMissionIndex + 1;
         document.getElementById('total-missions').textContent = tour.missions.length;
+        
+        // Handle tour description for imported campaigns
+        const tourDescriptionElement = document.getElementById('tour-description');
+        if (tour.metadata && tour.metadata.isImportedCampaign && tour.metadata.originalCampaignData && tour.metadata.originalCampaignData.description) {
+            tourDescriptionElement.textContent = tour.metadata.originalCampaignData.description;
+            tourDescriptionElement.style.display = 'block';
+        } else {
+            tourDescriptionElement.style.display = 'none';
+        }
         
         // Display mission
         const container = document.getElementById('current-mission-container');
@@ -2980,6 +3091,105 @@ class App {
         link.click();
         
         URL.revokeObjectURL(link.href);
+    }
+
+    exportResults() {
+        if (!this.currentTour || !this.currentTour.completed || !this.statsMode || !this.squadMembers || this.squadMembers.length === 0) {
+            alert('No completed tour results to export.');
+            return;
+        }
+
+        // Calculate aggregate stats for export
+        const aggregateStats = {
+            totalKills: 0,
+            totalSamples: 0,
+            totalDeaths: 0,
+            totalMissions: this.currentTour.missions.length,
+            factionKills: {
+                "Terminids": 0,
+                "Automatons": 0,
+                "Illuminate": 0
+            }
+        };
+
+        const squadMemberStats = {};
+
+        // Initialize and populate squad member stats from this.squadMembers
+        this.squadMembers.forEach(member => {
+            if (member.name) {
+                squadMemberStats[member.name] = {
+                    kills: member.kills.total || 0,
+                    deaths: member.deaths || 0,
+                    samples: member.samples || 0,
+                    factionKills: {
+                        "Terminids": member.kills.byFaction.Terminids || 0,
+                        "Automatons": member.kills.byFaction.Automatons || 0,
+                        "Illuminate": member.kills.byFaction.Illuminate || 0
+                    }
+                };
+
+                // Add to aggregate stats
+                aggregateStats.totalKills += squadMemberStats[member.name].kills;
+                aggregateStats.totalDeaths += squadMemberStats[member.name].deaths;
+                aggregateStats.totalSamples += squadMemberStats[member.name].samples;
+
+                // Add faction-specific kills to aggregate
+                Object.keys(aggregateStats.factionKills).forEach(faction => {
+                    aggregateStats.factionKills[faction] += squadMemberStats[member.name].factionKills[faction];
+                });
+            }
+        });
+
+        // Find MVP
+        let mvpPlayer = null;
+        let mvpScore = -1;
+        Object.entries(squadMemberStats).forEach(([memberName, stats]) => {
+            const score = stats.kills * 3 + stats.samples * 2 - stats.deaths * 5;
+            if (score > mvpScore) {
+                mvpScore = score;
+                mvpPlayer = memberName;
+            }
+        });
+
+        const exportData = {
+            version: "1.0",
+            type: "results",
+            exportedAt: new Date().toISOString(),
+            tourData: {
+                name: this.currentTour.name,
+                theme: this.currentTour.theme,
+                completedAt: new Date().toISOString(),
+                operationsCompleted: this.currentTour.missions.length,
+                factions: [...new Set(this.currentTour.missions.map(m => m.faction))],
+                planets: [...new Set(this.currentTour.missions.map(m => m.planet))],
+                difficulties: [...new Set(this.currentTour.missions.map(m => m.difficulty))],
+                biomes: [...new Set(this.currentTour.missions.map(m => m.biome).filter(b => b))]
+            },
+            squadStats: {
+                aggregateStats: aggregateStats,
+                memberStats: squadMemberStats,
+                mvp: {
+                    player: mvpPlayer,
+                    score: mvpScore
+                }
+            }
+        };
+
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `${this.currentTour.name.replace(/[^a-z0-9]/gi, '_')}_results.json`;
+        link.click();
+        
+        URL.revokeObjectURL(link.href);
+        
+        alert('Results exported successfully!');
+    }
+
+    handleExportResults() {
+        this.exportResults();
     }
 
     importTour(fileInput) {
@@ -3936,6 +4146,29 @@ class App {
                                   placeholder="Text between this and next operation...">${operation.transitionText}</textarea>
                     </div>
                 </div>
+                
+                <div class="operation-objectives">
+                    <div class="objective-field">
+                        <label>Primary Objective Title:</label>
+                        <input type="text" class="operation-primary-title-input" data-operation-id="${operation.id}" 
+                               data-field="primaryObjectiveTitle" maxlength="100"
+                               placeholder="Leave empty to use generated objective" value="${operation.primaryObjectiveTitle || ''}">
+                    </div>
+                    
+                    <div class="objective-field">
+                        <label>Primary Objective Description:</label>
+                        <textarea class="operation-primary-description-textarea" data-operation-id="${operation.id}" 
+                                  data-field="primaryObjectiveDescription" rows="2" 
+                                  placeholder="Leave empty to use generated objective">${operation.primaryObjectiveDescription || ''}</textarea>
+                    </div>
+                    
+                    <div class="objective-field">
+                        <label>Secondary Objectives Description:</label>
+                        <textarea class="operation-secondary-description-textarea" data-operation-id="${operation.id}" 
+                                  data-field="secondaryObjectiveDescription" rows="2" 
+                                  placeholder="Leave empty to use generated objectives">${operation.secondaryObjectiveDescription || ''}</textarea>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -4017,6 +4250,16 @@ class App {
             
             const transitionText = operationElement.querySelector('.operation-transition-textarea');
             transitionText.addEventListener('input', (e) => this.handleOperationChange(operationId, 'transitionText', e.target.value));
+            
+            // Objective inputs
+            const primaryTitleInput = operationElement.querySelector('.operation-primary-title-input');
+            primaryTitleInput.addEventListener('input', (e) => this.handleOperationChange(operationId, 'primaryObjectiveTitle', e.target.value));
+            
+            const primaryDescriptionText = operationElement.querySelector('.operation-primary-description-textarea');
+            primaryDescriptionText.addEventListener('input', (e) => this.handleOperationChange(operationId, 'primaryObjectiveDescription', e.target.value));
+            
+            const secondaryDescriptionText = operationElement.querySelector('.operation-secondary-description-textarea');
+            secondaryDescriptionText.addEventListener('input', (e) => this.handleOperationChange(operationId, 'secondaryObjectiveDescription', e.target.value));
             
             // Drag and drop
             operationElement.addEventListener('dragstart', (e) => this.handleDragStart(e, operationId));
@@ -4514,6 +4757,592 @@ class App {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    // Results Viewer Methods
+    setupResultsViewerListeners() {
+        // Back to generator button
+        const backToGeneratorBtn = document.getElementById('back-to-generator-results');
+        if (backToGeneratorBtn) {
+            backToGeneratorBtn.addEventListener('click', () => this.handleBackToGeneratorFromResults());
+        }
+
+        // Import buttons
+        const importSingleBtn = document.getElementById('import-single-results');
+        if (importSingleBtn) {
+            importSingleBtn.addEventListener('click', () => this.handleImportSingleResults());
+        }
+
+        const importMultipleBtn = document.getElementById('import-multiple-results');
+        if (importMultipleBtn) {
+            importMultipleBtn.addEventListener('click', () => this.handleImportMultipleResults());
+        }
+
+        // File inputs
+        const importSingleFile = document.getElementById('import-single-results-file');
+        if (importSingleFile) {
+            importSingleFile.addEventListener('change', () => this.importSingleResults(importSingleFile));
+        }
+
+        const importMultipleFile = document.getElementById('import-multiple-results-file');
+        if (importMultipleFile) {
+            importMultipleFile.addEventListener('change', () => this.importMultipleResults(importMultipleFile));
+        }
+
+        // Mode selector buttons
+        const singleViewBtn = document.getElementById('single-view-mode');
+        if (singleViewBtn) {
+            singleViewBtn.addEventListener('click', () => this.switchToSingleView());
+        }
+
+        const comparisonViewBtn = document.getElementById('comparison-view-mode');
+        if (comparisonViewBtn) {
+            comparisonViewBtn.addEventListener('click', () => this.switchToComparisonView());
+        }
+
+        // Group management
+        const clearAllGroupsBtn = document.getElementById('clear-all-groups');
+        if (clearAllGroupsBtn) {
+            clearAllGroupsBtn.addEventListener('click', () => this.clearAllGroups());
+        }
+
+        // Group name modal
+        const confirmGroupNameBtn = document.getElementById('confirm-group-name');
+        if (confirmGroupNameBtn) {
+            confirmGroupNameBtn.addEventListener('click', () => this.confirmGroupName());
+        }
+
+        const cancelGroupNameBtn = document.getElementById('cancel-group-name');
+        if (cancelGroupNameBtn) {
+            cancelGroupNameBtn.addEventListener('click', () => this.cancelGroupName());
+        }
+
+        const groupNameInput = document.getElementById('group-name-input');
+        if (groupNameInput) {
+            groupNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.confirmGroupName();
+                }
+            });
+        }
+    }
+
+    handleShowResultsViewer() {
+        // Hide other sections
+        document.querySelector('.generator-controls').style.display = 'none';
+        document.getElementById('campaign-display').style.display = 'none';
+        document.getElementById('tour-display').style.display = 'none';
+        document.getElementById('campaign-builder-section').style.display = 'none';
+        
+        // Show results viewer
+        document.getElementById('results-viewer-section').style.display = 'block';
+
+        // Initialize results viewer state
+        this.resultsGroups = [];
+        this.currentSingleResult = null;
+        this.pendingFiles = null;
+    }
+
+    handleBackToGeneratorFromResults() {
+        // Show generator controls
+        document.querySelector('.generator-controls').style.display = 'block';
+        
+        // Hide results viewer
+        document.getElementById('results-viewer-section').style.display = 'none';
+        
+        // Hide other sections
+        document.getElementById('campaign-display').style.display = 'none';
+        document.getElementById('tour-display').style.display = 'none';
+        document.getElementById('campaign-builder-section').style.display = 'none';
+
+        // Clear results viewer state
+        this.resultsGroups = [];
+        this.currentSingleResult = null;
+        this.pendingFiles = null;
+        document.getElementById('results-display-section').style.display = 'none';
+    }
+
+    handleImportSingleResults() {
+        const fileInput = document.getElementById('import-single-results-file');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    handleImportMultipleResults() {
+        const fileInput = document.getElementById('import-multiple-results-file');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    importSingleResults(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const resultData = JSON.parse(e.target.result);
+                
+                // Validate result data structure
+                if (!resultData.version || resultData.type !== 'results' || !resultData.tourData || !resultData.squadStats) {
+                    throw new Error('Invalid results file format');
+                }
+
+                this.currentSingleResult = resultData;
+                this.displaySingleResult(resultData);
+                
+                // Show results display section and switch to single view
+                document.getElementById('results-display-section').style.display = 'block';
+                this.switchToSingleView();
+                
+                alert('Results imported successfully!');
+                
+            } catch (error) {
+                alert(`Failed to import results: ${error.message}`);
+                console.error('Results import error:', error);
+            }
+            
+            // Clear file input
+            fileInput.value = '';
+        };
+        
+        reader.readAsText(file);
+    }
+
+    importMultipleResults(fileInput) {
+        const files = Array.from(fileInput.files);
+        if (files.length === 0) return;
+
+        this.pendingFiles = [];
+
+        let processedFiles = 0;
+        const validResults = [];
+
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const resultData = JSON.parse(e.target.result);
+                    
+                    // Validate result data structure
+                    if (!resultData.version || resultData.type !== 'results' || !resultData.tourData || !resultData.squadStats) {
+                        throw new Error(`Invalid results file format: ${file.name}`);
+                    }
+
+                    validResults.push(resultData);
+                    
+                } catch (error) {
+                    console.error(`Error processing file ${file.name}:`, error);
+                    alert(`Failed to import ${file.name}: ${error.message}`);
+                }
+                
+                processedFiles++;
+                
+                // When all files are processed
+                if (processedFiles === files.length) {
+                    if (validResults.length > 0) {
+                        this.pendingFiles = validResults;
+                        this.showGroupNameModal();
+                    } else {
+                        alert('No valid results files were found.');
+                    }
+                }
+            };
+            
+            reader.readAsText(file);
+        });
+
+        // Clear file input
+        fileInput.value = '';
+    }
+
+    showGroupNameModal() {
+        document.getElementById('group-name-modal').style.display = 'flex';
+        document.getElementById('group-name-input').focus();
+    }
+
+    confirmGroupName() {
+        const groupNameInput = document.getElementById('group-name-input');
+        const groupName = groupNameInput.value.trim();
+        
+        if (!groupName) {
+            alert('Please enter a group name.');
+            return;
+        }
+
+        if (!this.pendingFiles || this.pendingFiles.length === 0) {
+            alert('No files to add to group.');
+            this.cancelGroupName();
+            return;
+        }
+
+        // Add the group
+        this.resultsGroups.push({
+            name: groupName,
+            results: this.pendingFiles
+        });
+
+        // Clear pending files and hide modal
+        this.pendingFiles = null;
+        this.hideGroupNameModal();
+        
+        // Show results display section and switch to comparison view
+        document.getElementById('results-display-section').style.display = 'block';
+        this.switchToComparisonView();
+        this.updateGroupList();
+        this.updateComparisonView();
+        
+        alert(`Group "${groupName}" added successfully!`);
+    }
+
+    cancelGroupName() {
+        this.pendingFiles = null;
+        this.hideGroupNameModal();
+    }
+
+    hideGroupNameModal() {
+        document.getElementById('group-name-modal').style.display = 'none';
+        document.getElementById('group-name-input').value = '';
+    }
+
+    switchToSingleView() {
+        // Update mode buttons
+        document.getElementById('single-view-mode').classList.add('active');
+        document.getElementById('comparison-view-mode').classList.remove('active');
+        
+        // Show single view, hide comparison view
+        document.getElementById('single-result-view').style.display = 'block';
+        document.getElementById('comparison-view').style.display = 'none';
+    }
+
+    switchToComparisonView() {
+        // Update mode buttons
+        document.getElementById('single-view-mode').classList.remove('active');
+        document.getElementById('comparison-view-mode').classList.add('active');
+        
+        // Show comparison view, hide single view
+        document.getElementById('single-result-view').style.display = 'none';
+        document.getElementById('comparison-view').style.display = 'block';
+    }
+
+    displaySingleResult(resultData) {
+        // Update result name
+        document.getElementById('single-result-name').textContent = resultData.tourData.name;
+        
+        // Update metadata
+        const metadataElement = document.getElementById('single-result-metadata');
+        metadataElement.innerHTML = `
+            <div class="metadata-item">
+                <strong>Operations:</strong> ${resultData.tourData.operationsCompleted}
+            </div>
+            <div class="metadata-item">
+                <strong>Factions:</strong> ${resultData.tourData.factions.join(', ')}
+            </div>
+            <div class="metadata-item">
+                <strong>Planets:</strong> ${resultData.tourData.planets.length} planets
+            </div>
+            <div class="metadata-item">
+                <strong>Theme:</strong> ${resultData.tourData.theme || 'Random'}
+            </div>
+        `;
+        
+        // Update stats
+        const statsElement = document.getElementById('single-result-stats');
+        const aggregateStats = resultData.squadStats.aggregateStats;
+        const memberStats = resultData.squadStats.memberStats;
+        const mvp = resultData.squadStats.mvp;
+        
+        // Calculate additional metrics
+        const kdRatio = aggregateStats.totalDeaths > 0 ? (aggregateStats.totalKills / aggregateStats.totalDeaths).toFixed(2) : aggregateStats.totalKills.toFixed(2);
+        const killsPerOp = (aggregateStats.totalKills / resultData.tourData.operationsCompleted).toFixed(1);
+        const samplesPerOp = (aggregateStats.totalSamples / resultData.tourData.operationsCompleted).toFixed(1);
+        
+        let statsHTML = `
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card kills-card">
+                    <div class="card-icon">⚔️</div>
+                    <div class="card-content">
+                        <div class="card-value">${aggregateStats.totalKills}</div>
+                        <div class="card-label">Total Kills</div>
+                        <div class="card-subtitle">${killsPerOp} per operation</div>
+                    </div>
+                </div>
+                <div class="summary-card samples-card">
+                    <div class="card-icon">🧪</div>
+                    <div class="card-content">
+                        <div class="card-value">${aggregateStats.totalSamples}</div>
+                        <div class="card-label">Total Samples</div>
+                        <div class="card-subtitle">${samplesPerOp} per operation</div>
+                    </div>
+                </div>
+                <div class="summary-card deaths-card">
+                    <div class="card-icon">💀</div>
+                    <div class="card-content">
+                        <div class="card-value">${aggregateStats.totalDeaths}</div>
+                        <div class="card-label">Total Deaths</div>
+                        <div class="card-subtitle">K/D: ${kdRatio}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-section faction-stats">
+                <h4>🎯 Faction Kills Breakdown</h4>
+                <div class="faction-bars">
+                    <div class="faction-bar">
+                        <div class="faction-info">
+                            <span class="faction-name">🐛 Terminids</span>
+                            <span class="faction-value">${aggregateStats.factionKills.Terminids}</span>
+                        </div>
+                        <div class="faction-progress">
+                            <div class="faction-fill terminids" style="width: ${(aggregateStats.factionKills.Terminids / aggregateStats.totalKills * 100).toFixed(1)}%"></div>
+                        </div>
+                    </div>
+                    <div class="faction-bar">
+                        <div class="faction-info">
+                            <span class="faction-name">🤖 Automatons</span>
+                            <span class="faction-value">${aggregateStats.factionKills.Automatons}</span>
+                        </div>
+                        <div class="faction-progress">
+                            <div class="faction-fill automatons" style="width: ${(aggregateStats.factionKills.Automatons / aggregateStats.totalKills * 100).toFixed(1)}%"></div>
+                        </div>
+                    </div>
+                    <div class="faction-bar">
+                        <div class="faction-info">
+                            <span class="faction-name">👁️ Illuminate</span>
+                            <span class="faction-value">${aggregateStats.factionKills.Illuminate}</span>
+                        </div>
+                        <div class="faction-progress">
+                            <div class="faction-fill illuminate" style="width: ${(aggregateStats.factionKills.Illuminate / aggregateStats.totalKills * 100).toFixed(1)}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        if (mvp.player) {
+            statsHTML += `
+                <div class="stats-section mvp-section">
+                    <h4>🏆 Most Valuable Helldiver</h4>
+                    <div class="mvp-display">
+                        <div class="mvp-trophy">🏆</div>
+                        <div class="mvp-info">
+                            <div class="mvp-name">${mvp.player}</div>
+                            <div class="mvp-score">Score: ${Math.round(mvp.score)}</div>
+                            <div class="mvp-subtitle">Outstanding performance for Democracy!</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add individual member stats
+        statsHTML += `<div class="member-stats-grid">`;
+        Object.entries(memberStats).forEach(([memberName, stats]) => {
+            const memberKD = stats.deaths > 0 ? (stats.kills / stats.deaths).toFixed(2) : stats.kills.toFixed(2);
+            const memberScore = stats.kills * 3 + stats.samples * 2 - stats.deaths * 5;
+            const isMVP = memberName === mvp.player;
+            
+            statsHTML += `
+                <div class="member-card ${isMVP ? 'mvp-member' : ''}">
+                    <div class="member-header">
+                        <h5>${isMVP ? '👑 ' : ''}${memberName}</h5>
+                        ${isMVP ? '<span class="mvp-badge">MVP</span>' : ''}
+                    </div>
+                    <div class="member-stats">
+                        <div class="member-stat">
+                            <span class="stat-icon">⚔️</span>
+                            <span class="stat-number">${stats.kills}</span>
+                            <span class="stat-text">Kills</span>
+                        </div>
+                        <div class="member-stat">
+                            <span class="stat-icon">💀</span>
+                            <span class="stat-number">${stats.deaths}</span>
+                            <span class="stat-text">Deaths</span>
+                        </div>
+                        <div class="member-stat">
+                            <span class="stat-icon">🧪</span>
+                            <span class="stat-number">${stats.samples}</span>
+                            <span class="stat-text">Samples</span>
+                        </div>
+                    </div>
+                    <div class="member-metrics">
+                        <span class="metric">K/D: ${memberKD}</span>
+                        <span class="metric">Score: ${memberScore}</span>
+                    </div>
+                </div>
+            `;
+        });
+        statsHTML += `</div>`;
+        
+        statsElement.innerHTML = statsHTML;
+    }
+
+    updateGroupList() {
+        const groupListElement = document.getElementById('group-list');
+        
+        if (this.resultsGroups.length === 0) {
+            groupListElement.innerHTML = '<p style="color: rgba(255,255,255,0.6);">No groups loaded</p>';
+            return;
+        }
+        
+        let groupsHTML = '';
+        this.resultsGroups.forEach((group, index) => {
+            groupsHTML += `
+                <div class="group-tag">
+                    <span>${group.name} (${group.results.length} results)</span>
+                    <button class="remove-group" onclick="app.removeGroup(${index})" title="Remove group">×</button>
+                </div>
+            `;
+        });
+        
+        groupListElement.innerHTML = groupsHTML;
+    }
+
+    removeGroup(index) {
+        if (index >= 0 && index < this.resultsGroups.length) {
+            const removedGroup = this.resultsGroups.splice(index, 1)[0];
+            this.updateGroupList();
+            this.updateComparisonView();
+            alert(`Group "${removedGroup.name}" removed.`);
+        }
+    }
+
+    clearAllGroups() {
+        if (this.resultsGroups.length === 0) {
+            return;
+        }
+        
+        if (confirm('Are you sure you want to clear all groups? This cannot be undone.')) {
+            this.resultsGroups = [];
+            this.updateGroupList();
+            this.updateComparisonView();
+            alert('All groups cleared.');
+        }
+    }
+
+    updateComparisonView() {
+        const comparisonStatsElement = document.getElementById('comparison-stats');
+        
+        if (this.resultsGroups.length === 0) {
+            comparisonStatsElement.innerHTML = '<p style="text-align: center; color: rgba(255,255,255,0.6);">Import multiple results to compare groups</p>';
+            return;
+        }
+        
+        // Calculate aggregated stats for each group
+        const groupStats = this.resultsGroups.map(group => {
+            const aggregated = {
+                name: group.name,
+                totalKills: 0,
+                totalDeaths: 0,
+                totalSamples: 0,
+                totalOperations: 0,
+                totalResults: group.results.length,
+                factionKills: { Terminids: 0, Automatons: 0, Illuminate: 0 }
+            };
+            
+            group.results.forEach(result => {
+                const stats = result.squadStats.aggregateStats;
+                aggregated.totalKills += stats.totalKills || 0;
+                aggregated.totalDeaths += stats.totalDeaths || 0;
+                aggregated.totalSamples += stats.totalSamples || 0;
+                aggregated.totalOperations += result.tourData.operationsCompleted || 0;
+                
+                Object.keys(aggregated.factionKills).forEach(faction => {
+                    aggregated.factionKills[faction] += stats.factionKills[faction] || 0;
+                });
+            });
+            
+            // Calculate group score: (kills * 3 + samples * 2 - deaths * 5) / operations
+            aggregated.score = aggregated.totalOperations > 0 ? 
+                (aggregated.totalKills * 3 + aggregated.totalSamples * 2 - aggregated.totalDeaths * 5) / aggregated.totalOperations : 0;
+            
+            return aggregated;
+        });
+        
+        // Sort groups by score (highest first) and add rankings
+        groupStats.sort((a, b) => b.score - a.score);
+        groupStats.forEach((group, index) => {
+            group.rank = index + 1;
+            group.rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+        });
+        
+        // Generate ranking summary
+        let summaryHTML = '';
+        if (groupStats.length >= 2) {
+            summaryHTML = `
+                <div class="ranking-summary">
+                    <h4>🏆 Top 3</h4>
+                    <div class="ranking-podium">
+                        ${groupStats.slice(0, 3).map((group, index) => `
+                            <div class="podium-position position-${index + 1}">
+                                <div class="podium-rank">${group.rankIcon}</div>
+                                <div class="podium-name">${group.name}</div>
+                                <div class="podium-score">${group.score.toFixed(1)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="ranking-explanation">
+                        <small>Scoring: (Kills × 3 + Samples × 2 - Deaths × 5) ÷ Operations</small>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Generate comparison table
+        let tableHTML = `
+            ${summaryHTML}
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Group</th>
+                        <th>Score</th>
+                        <th>Results</th>
+                        <th>Operations</th>
+                        <th>Total Kills</th>
+                        <th>Total Deaths</th>
+                        <th>Total Samples</th>
+                        <th>Terminids</th>
+                        <th>Automatons</th>
+                        <th>Illuminate</th>
+                        <th>K/D Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        groupStats.forEach(stats => {
+            const kdRatio = stats.totalDeaths > 0 ? (stats.totalKills / stats.totalDeaths).toFixed(2) : stats.totalKills.toFixed(2);
+            const scoreDisplay = stats.score.toFixed(1);
+            const rankClass = stats.rank <= 3 ? 'top-rank' : '';
+            
+            tableHTML += `
+                <tr class="${rankClass}">
+                    <td class="rank-cell"><span class="rank-icon">${stats.rankIcon}</span></td>
+                    <td><strong>${stats.name}</strong></td>
+                    <td class="score-cell"><strong>${scoreDisplay}</strong></td>
+                    <td>${stats.totalResults}</td>
+                    <td>${stats.totalOperations}</td>
+                    <td>${stats.totalKills}</td>
+                    <td>${stats.totalDeaths}</td>
+                    <td>${stats.totalSamples}</td>
+                    <td>${stats.factionKills.Terminids}</td>
+                    <td>${stats.factionKills.Automatons}</td>
+                    <td>${stats.factionKills.Illuminate}</td>
+                    <td>${kdRatio}</td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += `
+                </tbody>
+            </table>
+        `;
+        
+        comparisonStatsElement.innerHTML = tableHTML;
     }
 
 

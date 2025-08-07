@@ -841,10 +841,11 @@ class ApiService {
     getEnemyPlanets(planets) {
         const enemyPlanets = planets.filter(planet => {
             const enemy = this.getCurrentEnemy(planet);
-            return enemy && enemy !== "Humans" && !planet.disabled;
+            const isAccessible = planet.isActiveCampaign === true;
+            return enemy && enemy !== "Humans" && !planet.disabled && isAccessible;
         });
         
-        console.log(`Found ${enemyPlanets.length} enemy planets from ${planets.length} total planets`);
+        console.log(`Found ${enemyPlanets.length} accessible enemy planets from ${planets.length} total planets`);
         
 
         if (enemyPlanets.length === 0) {
@@ -868,6 +869,7 @@ class ApiService {
                     ...planet,
                     currentOwner: assignedFaction,
                     isGeneratedEnemy: true,
+                    isActiveCampaign: true, // Mark fallback planets as accessible
                     liberation: Math.floor(Math.random() * 100),
                 };
             });
@@ -1500,6 +1502,73 @@ class ApiService {
             biome: this.getPlanetBiome(planet),
             biomeGroup: this.getBiomeGroup(planet)
         }));
+    }
+
+    // Sector-specific filtering methods for enhanced sector campaign selection
+    getSectorsByFaction(planets, faction) {
+        if (!faction || faction === 'any' || faction === 'random') {
+            return this.getSectorsWithCapturablePlanets(planets);
+        }
+        
+        const factionPlanets = planets.filter(planet => this.getCurrentEnemy(planet) === faction);
+        const sectorCounts = {};
+        
+        factionPlanets.forEach(planet => {
+            const sector = planet.sector || 'Unknown';
+            if (sector !== 'Unknown') {
+                sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+            }
+        });
+        
+        // Return sectors that have at least one planet with the specified faction
+        return Object.keys(sectorCounts).filter(sector => sectorCounts[sector] >= 1);
+    }
+
+    getSectorsWithCapturablePlanets(planets) {
+        const enemyPlanets = this.getEnemyPlanets(planets);
+        const sectorCounts = {};
+        
+        enemyPlanets.forEach(planet => {
+            const sector = planet.sector || 'Unknown';
+            if (sector !== 'Unknown') {
+                sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+            }
+        });
+        
+        // Return sectors that have at least one capturable planet
+        return Object.keys(sectorCounts);
+    }
+
+    getSectorPlanetCounts(planets, sectors = null) {
+        const targetSectors = sectors || this.getSectorsWithCapturablePlanets(planets);
+        const enemyPlanets = this.getEnemyPlanets(planets);
+        const sectorCounts = {};
+        
+        targetSectors.forEach(sector => {
+            sectorCounts[sector] = 0;
+        });
+        
+        enemyPlanets.forEach(planet => {
+            const sector = planet.sector || 'Unknown';
+            if (targetSectors.includes(sector)) {
+                sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+            }
+        });
+        
+        return sectorCounts;
+    }
+
+    getSectorsFilteredByFactionAndCapturable(planets, faction) {
+        const capturableSectors = this.getSectorsWithCapturablePlanets(planets);
+        
+        if (!faction || faction === 'any' || faction === 'random') {
+            return capturableSectors;
+        }
+        
+        const factionSectors = this.getSectorsByFaction(planets, faction);
+        
+        // Return intersection - sectors that have both capturable planets AND the specified faction
+        return capturableSectors.filter(sector => factionSectors.includes(sector));
     }
 
     destroy() {

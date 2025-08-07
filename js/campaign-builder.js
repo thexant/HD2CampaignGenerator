@@ -10,6 +10,9 @@ class Operation {
         this.enableFallback = true;
         this.briefingText = '';
         this.transitionText = '';
+        this.primaryObjectiveTitle = '';
+        this.primaryObjectiveDescription = '';
+        this.secondaryObjectiveDescription = '';
         this.isValid = false;
     }
 
@@ -30,6 +33,9 @@ class Operation {
             enableFallback: this.enableFallback,
             briefingText: this.briefingText,
             transitionText: this.transitionText,
+            primaryObjectiveTitle: this.primaryObjectiveTitle,
+            primaryObjectiveDescription: this.primaryObjectiveDescription,
+            secondaryObjectiveDescription: this.secondaryObjectiveDescription,
             isValid: this.isValid
         };
     }
@@ -45,6 +51,9 @@ class Operation {
         operation.enableFallback = data.enableFallback !== undefined ? data.enableFallback : true;
         operation.briefingText = data.briefingText || '';
         operation.transitionText = data.transitionText || '';
+        operation.primaryObjectiveTitle = data.primaryObjectiveTitle || '';
+        operation.primaryObjectiveDescription = data.primaryObjectiveDescription || '';
+        operation.secondaryObjectiveDescription = data.secondaryObjectiveDescription || '';
         operation.validate();
         return operation;
     }
@@ -298,6 +307,9 @@ class CampaignBuilder {
                 briefing: operation.briefingText || this.generateDefaultBriefing(operation),
                 transitionText: operation.transitionText || '',
                 enableFallback: operation.enableFallback,
+                customPrimaryTitle: operation.primaryObjectiveTitle,
+                customPrimaryDescription: operation.primaryObjectiveDescription,
+                customSecondaryDescription: operation.secondaryObjectiveDescription,
                 isCustom: true
             };
             
@@ -366,6 +378,9 @@ class CampaignBuilder {
                     operation.enableFallback = mission.enableFallback !== undefined ? mission.enableFallback : true;
                     operation.briefingText = mission.briefing || '';
                     operation.transitionText = mission.transitionText || '';
+                    operation.primaryObjectiveTitle = mission.customPrimaryTitle || '';
+                    operation.primaryObjectiveDescription = mission.customPrimaryDescription || '';
+                    operation.secondaryObjectiveDescription = mission.customSecondaryDescription || '';
                     operation.validate();
                     
                     this.campaign.operations.push(operation);

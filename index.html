@@ -175,6 +175,15 @@
                 </select>
             </div>
 
+            <!-- Sector Selection (shown only when sector_campaign theme is selected) -->
+            <div class="preference-group" id="tour-sector-group" style="display: none;">
+                <label for="tour-sector">Target Sector:</label>
+                <select id="tour-sector">
+                    <option value="random">Any Available Sector</option>
+                    <!-- Sector options will be populated dynamically -->
+                </select>
+            </div>
+
             <div class="preference-group" id="custom-length-group" style="display: none;">
                 <label for="custom-length-input">Custom Length (1-50 operations):</label>
                 <input type="number" id="custom-length-input" min="1" max="50" value="5">
@@ -251,6 +260,8 @@
                     <div class="utilities-content">
                         <button id="campaign-builder" class="utility-btn">Campaign Builder</button>
                         <small class="utility-description">Create custom campaigns with per-operation control</small>
+                        <button id="view-results" class="utility-btn">View Results</button>
+                        <small class="utility-description">Import and compare results from completed tours</small>
                     </div>
                 </details>
             </div>
@@ -259,6 +270,9 @@
         <section class="campaign-display" id="campaign-display" style="display: none;">
             <div class="campaign-header">
                 <h2 id="campaign-name">Operation: [Campaign Name]</h2>
+                <p id="campaign-description" class="campaign-description" style="display: none;">
+                    [Campaign description will appear here]
+                </p>
                 <p id="campaign-main-goal">Main Goal: [Campaign objective]</p>
                 <div id="campaign-backstory" class="backstory">
                     [Campaign backstory will appear here]
@@ -295,6 +309,9 @@
                 <div class="tour-progress">
                     <div class="tour-info">
                         <h2 id="tour-name">Tour of War: [Tour Name]</h2>
+                        <p id="tour-description" class="tour-description" style="display: none;">
+                            [Campaign description will appear here]
+                        </p>
                         <div class="progress-indicator">
                             Operation <span id="current-mission-number">1</span> of <span id="total-missions">6</span>
                         </div>
@@ -403,6 +420,7 @@
                     </div>
                 </div>
                 <div class="completion-actions">
+                    <button id="export-results" class="retry-btn">Export Results</button>
                     <button id="start-new-stats-tour" class="generate-btn">Start New Tour</button>
                     <button id="return-to-campaigns-stats" class="retry-btn">Return to Campaign Generator</button>
                 </div>
@@ -449,6 +467,87 @@
 
             <div class="validation-status" id="builder-validation" style="display: none;">
                 <!-- Validation messages will appear here -->
+            </div>
+        </section>
+
+        <!-- Results Viewer Section -->
+        <section class="results-viewer" id="results-viewer-section" style="display: none;">
+            <div class="results-header">
+                <h2>Results Viewer</h2>
+                <p>Import and compare results from completed tours</p>
+                <button id="back-to-generator-results" class="retry-btn">← Back to Generator</button>
+            </div>
+
+            <div class="results-import-section">
+                <div class="import-options">
+                    <div class="import-option">
+                        <button id="import-single-results" class="generate-btn">Import Single Result</button>
+                        <input type="file" id="import-single-results-file" accept=".json" style="display: none;">
+                        <small class="utility-description">View results from a single completed tour</small>
+                    </div>
+                    <div class="import-option">
+                        <button id="import-multiple-results" class="generate-btn">Import Multiple Results</button>
+                        <input type="file" id="import-multiple-results-file" accept=".json" multiple style="display: none;">
+                        <small class="utility-description">Compare results from multiple groups or runs</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-display-section" id="results-display-section" style="display: none;">
+                <div class="results-mode-selector">
+                    <button id="single-view-mode" class="mode-btn active">Single View</button>
+                    <button id="comparison-view-mode" class="mode-btn">Comparison View</button>
+                </div>
+
+                <!-- Single Result View -->
+                <div class="single-result-view" id="single-result-view">
+                    <div class="result-header">
+                        <h3 id="single-result-name">Tour Name</h3>
+                        <div class="result-metadata" id="single-result-metadata">
+                            <!-- Tour metadata will be displayed here -->
+                        </div>
+                    </div>
+                    <div class="result-stats" id="single-result-stats">
+                        <!-- Single result stats will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Comparison View -->
+                <div class="comparison-view" id="comparison-view" style="display: none;">
+                    <div class="comparison-header">
+                        <h3>Results Comparison</h3>
+                        <div class="group-management">
+                            <div class="group-list" id="group-list">
+                                <!-- Groups will be listed here -->
+                            </div>
+                            <div class="group-controls">
+                                <button id="add-group" class="generate-btn" style="display: none;">Add Group</button>
+                                <button id="clear-all-groups" class="retry-btn">Clear All</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comparison-stats" id="comparison-stats">
+                        <!-- Comparison stats table will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group Name Modal -->
+            <div class="group-name-modal" id="group-name-modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Name This Group</h3>
+                    </div>
+                    <div class="modal-body">
+                        <label for="group-name-input">Group Name:</label>
+                        <input type="text" id="group-name-input" placeholder="Enter group name..." maxlength="50">
+                        <small class="utility-description">This name will be used to identify this set of results in comparisons</small>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirm-group-name" class="generate-btn">Confirm</button>
+                        <button id="cancel-group-name" class="retry-btn">Cancel</button>
+                    </div>
+                </div>
             </div>
         </section>
 
