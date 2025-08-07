@@ -8,7 +8,7 @@ class App {
         this.squadMembers = [];
         // Per-mission tracking for multi-user group progression
         this.missionHistory = []; // Track squad composition and stats per individual mission
-        this.currentMissionInOperation = 0; // Track which mission within the current operation (0, 1, or 2)
+        this.currentMissionInOperation = 0; // Track which mission within the current operation (0-indexed)
         // Background data loading state
         this.backgroundDataLoading = false;
         this.backgroundDataReady = false;
@@ -665,13 +665,15 @@ class App {
 
             const tour = this.currentTour;
             const operationIndex = tour.currentMissionIndex;
+            const currentOperation = tour.missions[operationIndex];
+            const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
             const missionInOp = this.currentMissionInOperation + 1;
 
             dialog.innerHTML = `
                 <div style="background: #1a1a1a; color: white; padding: 2rem; border-radius: 8px; max-width: 600px; width: 90%;">
                     <div style="text-align: center; margin-bottom: 1.5rem;">
                         <h3>Squad Management</h3>
-                        <p>Operation ${operationIndex + 1}, Mission ${missionInOp}</p>
+                        <p>Operation ${operationIndex + 1}, Mission ${missionInOp} of ${missionsInThisOperation}</p>
                         <p style="color: #cccccc; font-size: 0.9rem;">Configure who's participating in this mission</p>
                     </div>
                     <div id="squad-management-list" style="margin-bottom: 1.5rem;">
@@ -960,7 +962,9 @@ class App {
 
     async handlePostStatsSquadManagement() {
         const tour = this.currentTour;
-        const isLastMissionInOperation = this.currentMissionInOperation >= 2;
+        const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        const isLastMissionInOperation = this.currentMissionInOperation >= missionsInThisOperation - 1;
         const isLastOperationInTour = tour.currentMissionIndex >= tour.missions.length - 1;
         
         // Show squad management dialog unless this is the very last mission of the entire tour
@@ -1000,7 +1004,9 @@ class App {
         const title = document.getElementById('stats-dialog-title');
         const description = document.getElementById('stats-dialog-description');
         if (title) {
-            title.textContent = `Operation ${tour.currentMissionIndex + 1}, Mission ${this.currentMissionInOperation + 1}: Statistics`;
+            const currentOperation = tour.missions[tour.currentMissionIndex];
+            const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+            title.textContent = `Operation ${tour.currentMissionIndex + 1}, Mission ${this.currentMissionInOperation + 1} of ${missionsInThisOperation}: Statistics`;
         }
         if (description) {
             description.textContent = `Enter statistics for each squad member during this mission (leave blank to skip):`;
@@ -1018,6 +1024,7 @@ class App {
     generateStatsInputs(container) {
         const tour = this.currentTour;
         const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
         const missionInOp = this.currentMissionInOperation + 1;
         
         // Only show stats for active squad members for this single mission
@@ -1118,7 +1125,11 @@ class App {
         // Check if we need to move to next mission within operation or next operation
         this.currentMissionInOperation++;
         
-        if (this.currentMissionInOperation >= 3) {
+        // Get current operation's difficulty to determine how many missions it should have
+        const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        
+        if (this.currentMissionInOperation >= missionsInThisOperation) {
             // Move to next operation
             this.currentMissionInOperation = 0;
             const completedOperationIndex = tour.currentMissionIndex;
@@ -2305,6 +2316,16 @@ class App {
         return names[level] || 'Unknown';
     }
 
+    getMissionsPerOperation(difficulty) {
+        // Based on Helldivers 2 actual structure:
+        // Difficulty 1-2: 1 mission per operation
+        // Difficulty 3-4: 2 missions per operation  
+        // Difficulty 5-10: 3 missions per operation
+        if (difficulty <= 2) return 1;
+        if (difficulty <= 4) return 2;
+        return 3;
+    }
+
     planetHasAvailableRegions(planet) {
         return (planet.availableRegions && planet.availableRegions.length > 0) ||
                (planet.activeRegions && planet.activeRegions.length > 0) ||
@@ -2562,13 +2583,15 @@ class App {
             missionFailedBtn.style.display = 'inline-block';
             
             // Update button text to reflect current mission progress
+            const currentOperation = tour.missions[tour.currentMissionIndex];
+            const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
             const missionInOp = this.currentMissionInOperation + 1;
-            const isLastMissionInOperation = this.currentMissionInOperation >= 2;
+            const isLastMissionInOperation = this.currentMissionInOperation >= missionsInThisOperation - 1;
             
             if (isLastMissionInOperation) {
                 missionCompleteBtn.textContent = `Operation Complete - Progress Tour`;
             } else {
-                missionCompleteBtn.textContent = `Mission ${missionInOp} Complete - Next Mission`;
+                missionCompleteBtn.textContent = `Mission ${missionInOp} of ${missionsInThisOperation} Complete - Next Mission`;
             }
             
             console.log('Mission action buttons made visible');
@@ -3445,7 +3468,7 @@ class App {
 
         // Calculate aggregate stats for export
         const totalMissionsPlayed = this.missionHistory.length;
-        const totalOperationsPlayed = Math.ceil(totalMissionsPlayed / 3);
+        const totalOperationsPlayed = [...new Set(this.missionHistory.map(m => m.operationIndex))].length;
         
         const aggregateStats = {
             totalKills: 0,
