@@ -781,15 +781,51 @@ class App {
 
     proceedToNextMission() {
         const tour = this.currentTour;
+        const completedMissionIndex = tour.currentMissionIndex;
         tour.currentMissionIndex++;
         
         if (tour.currentMissionIndex >= tour.missions.length) {
             // Tour completed!
             this.completeTour();
         } else {
+            // Check if the completed mission has transition text for imported campaigns
+            if (tour.metadata?.isImportedCampaign && completedMissionIndex < tour.missions.length) {
+                const completedMission = tour.missions[completedMissionIndex];
+                if (completedMission.transitionText && completedMission.transitionText.trim()) {
+                    // Show transition text before next mission briefing
+                    this.displayTransitionBriefing(completedMission.transitionText);
+                    return;
+                }
+            }
             
             // Show briefing for next mission
             this.displayNextMissionBriefing();
+        }
+    }
+
+    displayTransitionBriefing(transitionText) {
+        // Show transition text in briefing format
+        const briefingSection = document.getElementById('democracy-briefing');
+        const briefingContent = document.getElementById('briefing-content');
+        const currentMissionDisplay = document.getElementById('current-mission-display');
+        
+        briefingContent.innerHTML = transitionText;
+        briefingSection.style.display = 'block';
+        currentMissionDisplay.style.display = 'none';
+        
+        // Change the acknowledge button to "Continue to Next Mission"
+        const acknowledgeBriefingBtn = document.getElementById('acknowledge-briefing');
+        if (acknowledgeBriefingBtn) {
+            acknowledgeBriefingBtn.textContent = 'Continue to Next Mission';
+            // Store original handler and add temporary one
+            acknowledgeBriefingBtn._originalHandler = acknowledgeBriefingBtn.onclick;
+            acknowledgeBriefingBtn.onclick = () => {
+                // Restore original button text and handler
+                acknowledgeBriefingBtn.textContent = 'Acknowledged, Sir!';
+                acknowledgeBriefingBtn.onclick = acknowledgeBriefingBtn._originalHandler;
+                // Now show the next mission briefing
+                this.displayNextMissionBriefing();
+            };
         }
     }
 
@@ -2019,6 +2055,12 @@ class App {
 
     generateInitialBriefing(tour) {
         const mission = tour.missions[0];
+        
+        // For imported campaigns, check if the first mission has custom briefing text
+        if (tour.metadata?.isImportedCampaign && mission.briefing && mission.briefing.trim()) {
+            return mission.briefing;
+        }
+        
         const factionName = this.getSingularFactionName(mission.faction);
         const campaignTheme = tour.theme;
         
@@ -2339,6 +2381,11 @@ class App {
     }
 
     generateNextMissionBriefing(mission, missionIndex) {
+        // For imported campaigns, check if the mission has custom briefing text
+        if (this.currentTour.metadata?.isImportedCampaign && mission.briefing && mission.briefing.trim()) {
+            return mission.briefing;
+        }
+        
         const factionName = this.getSingularFactionName(mission.faction);
         const campaignTheme = this.currentTour.theme;
         
@@ -3644,8 +3691,8 @@ class App {
             // Set as current tour
             this.currentTour = tour;
 
-            // Show briefing for first mission
-            this.displayCurrentTourMission();
+            // Show briefing for imported campaign
+            this.displayTourBriefing(tour);
 
             // Hide preferences and show tour display
             document.getElementById('preferences-content').style.display = 'none';
