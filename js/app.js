@@ -1375,7 +1375,7 @@ class App {
         });
     }
 
-    createMissionCard(mission, index) {
+    createMissionCard(mission, index, missionKey = null) {
         const card = document.createElement('div');
         card.className = 'mission-card';
         
@@ -1429,12 +1429,17 @@ class App {
                     }
                 </ul>
                 
-                ${mission.modifier ? `
+                ${(missionKey && mission.missionModifiers && mission.missionModifiers[missionKey]) ? `
+                <h4>Mission Modifier</h4>
+                <div class="mission-modifier">
+                    <strong>${mission.missionModifiers[missionKey].name}:</strong> ${mission.missionModifiers[missionKey].description}
+                </div>
+                ` : (mission.modifier ? `
                 <h4>Operation Modifier</h4>
                 <div class="mission-modifier">
                     <strong>${mission.modifier.name}:</strong> ${mission.modifier.description}
                 </div>
-                ` : ''}
+                ` : '')}
                 
             </div>
         `;
@@ -2702,6 +2707,16 @@ class App {
         return 3;
     }
 
+    generateMissionModifier() {
+        // 20% chance to include a modifier per mission
+        if (Math.random() < 0.2) {
+            const modifiers = MISSION_TYPES.MODIFIERS;
+            const randomIndex = Math.floor(Math.random() * modifiers.length);
+            return modifiers[randomIndex];
+        }
+        return null;
+    }
+
     updateDualProgressIndicators(tour, animated = true) {
         const currentOperation = tour.missions[tour.currentMissionIndex];
         const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
@@ -3010,11 +3025,20 @@ class App {
             tourDescriptionElement.style.display = 'none';
         }
         
+        // Generate mission-specific modifier (20% chance per mission)
+        const missionKey = `${tour.currentMissionIndex}_${this.currentMissionInOperation}`;
+        if (!mission.missionModifiers) {
+            mission.missionModifiers = {};
+        }
+        if (!mission.missionModifiers[missionKey]) {
+            mission.missionModifiers[missionKey] = this.generateMissionModifier();
+        }
+        
         // Display mission
         const container = document.getElementById('current-mission-container');
         container.innerHTML = '';
         
-        const missionCard = this.createMissionCard(mission, tour.currentMissionIndex);
+        const missionCard = this.createMissionCard(mission, tour.currentMissionIndex, missionKey);
         container.appendChild(missionCard);
         
         // Show action buttons

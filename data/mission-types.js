@@ -497,7 +497,7 @@ const MISSION_TYPES = {
     MODIFIERS: [
         {
             name: "Utilize EXOSUIT Mechs",
-            description: "Helldivers should prioritize using Exo-45 Patriot or Exo-49 Emancipator mechs during this operation"
+            description: "Helldivers should prioritize using EXO-45 PATRIOT or EXO-49 EMANCIPATOR mechs during this operation"
         },
         {
             name: "Use FRV for Transport",
@@ -505,7 +505,7 @@ const MISSION_TYPES = {
         },
         {
             name: "Fire-Based Loadouts",
-            description: "Equip incendiary weapons and stratagems - embrace the cleansing flame of democracy"
+            description: "Equip incendiary weapons and stratagems, embrace the cleansing flame of democracy"
         },
         {
             name: "Laser-Based Loadouts",
@@ -561,7 +561,7 @@ const MISSION_TYPES = {
         },
         {
             name: "Rapid Deployment",
-            description: "Complete objectives with maximum speed and efficiency, minimize time spent in this operation"
+            description: "Complete objectives with maximum speed and efficiency, minimize time spent in this mission"
         },
         {
             name: "Defensive Positioning",
@@ -577,15 +577,15 @@ const MISSION_TYPES = {
         },
         {
             name: "Mobility Squad",
-            description: "The Squad should utilize Jump Packs, Hover Packs and Warp Packs during the operation."
+            description: "The Squad should utilize Jump Packs, Hover Packs and Warp Packs during the mission"
         },
 		{
             name: "HELLDIVER SMASH",
-            description: "For at least 1 mission in this operation, all squad members should wear heavy armor and utilize heavy weapons and ordnance at every possible opportunity."
+            description: "All squad members should wear heavy armor and utilize heavy weapons and ordnance at every possible opportunity."
         },
 		{
             name: "Lightweight",
-            description: "For at least 1 mission in this operation, all squad members should wear light armor and use lightweight weapons such as SMG's and secondaries."
+            description: "All squad members should wear light armor and use lightweight weapons such as SMG's and secondaries."
         }
     ]
 };

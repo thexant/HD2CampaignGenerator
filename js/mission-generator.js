@@ -39,9 +39,6 @@ class MissionGenerator {
         const primaryObjective = this.createOperationObjective(difficulty.level, environment, finalPlanet.isDefense);
         const secondaryObjectives = this.selectSecondaryObjectives(2 + Math.floor(Math.random() * 2), environment, finalPlanet.isDefense, difficulty.level);
         
-        // 20% chance to add a modifier
-        const modifier = this.selectModifier();
-        
         const mission = {
             number: missionIndex + 1,
             name: primaryObjective.name || `Operation ${missionIndex + 1}`,
@@ -57,7 +54,6 @@ class MissionGenerator {
             difficulty: difficulty,
             primaryObjective: primaryObjective,
             secondaryObjectives: secondaryObjectives,
-            modifier: modifier,
             isDefense: finalPlanet.isDefense || false
         };
         
