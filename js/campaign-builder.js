@@ -13,7 +13,48 @@ class Operation {
         this.primaryObjectiveTitle = '';
         this.primaryObjectiveDescription = '';
         this.secondaryObjectiveDescription = '';
+        this.missions = []; // Array of mission objects with modifiers
         this.isValid = false;
+        
+        // Initialize missions based on default difficulty
+        this.updateMissions();
+    }
+    
+    // Calculate number of missions based on difficulty level
+    getMissionCount() {
+        if (this.difficulty >= 1 && this.difficulty <= 2) {
+            return 1; // Difficulties 1-2: 1 mission
+        } else if (this.difficulty >= 3 && this.difficulty <= 4) {
+            return 2; // Difficulties 3-4: 2 missions
+        } else if (this.difficulty >= 5 && this.difficulty <= 10) {
+            return 3; // Difficulties 5+: 3 missions
+        }
+        return 1; // Fallback
+    }
+    
+    // Update missions array when difficulty changes
+    updateMissions() {
+        const requiredMissions = this.getMissionCount();
+        
+        // Add missions if we need more
+        while (this.missions.length < requiredMissions) {
+            this.missions.push({
+                id: `mission_${this.missions.length + 1}`,
+                name: `Mission ${this.missions.length + 1}`,
+                modifiers: []
+            });
+        }
+        
+        // Remove excess missions if we have too many
+        while (this.missions.length > requiredMissions) {
+            this.missions.pop();
+        }
+        
+        // Update mission names to ensure they're sequential
+        this.missions.forEach((mission, index) => {
+            mission.id = `mission_${index + 1}`;
+            mission.name = `Mission ${index + 1}`;
+        });
     }
 
     validate() {
@@ -36,6 +77,11 @@ class Operation {
             primaryObjectiveTitle: this.primaryObjectiveTitle,
             primaryObjectiveDescription: this.primaryObjectiveDescription,
             secondaryObjectiveDescription: this.secondaryObjectiveDescription,
+            missions: this.missions.map(mission => ({
+                id: mission.id,
+                name: mission.name,
+                modifiers: [...mission.modifiers]
+            })),
             isValid: this.isValid
         };
     }
@@ -54,6 +100,19 @@ class Operation {
         operation.primaryObjectiveTitle = data.primaryObjectiveTitle || '';
         operation.primaryObjectiveDescription = data.primaryObjectiveDescription || '';
         operation.secondaryObjectiveDescription = data.secondaryObjectiveDescription || '';
+        
+        // Handle missions data
+        if (data.missions && Array.isArray(data.missions)) {
+            operation.missions = data.missions.map(mission => ({
+                id: mission.id || 'mission_1',
+                name: mission.name || 'Mission 1',
+                modifiers: Array.isArray(mission.modifiers) ? [...mission.modifiers] : []
+            }));
+        } else {
+            // If no missions data, initialize based on difficulty
+            operation.updateMissions();
+        }
+        
         operation.validate();
         return operation;
     }
@@ -81,6 +140,12 @@ class CampaignBuilder {
         
         console.log('Initializing Campaign Builder...');
         this.loadAvailableData();
+        
+        // Force a refresh of modifiers UI after a short delay to ensure scripts are loaded
+        setTimeout(() => {
+            this.refreshModifiersUI();
+        }, 100);
+        
         this.isInitialized = true;
         console.log('Campaign Builder initialized successfully');
     }
@@ -225,9 +290,124 @@ class CampaignBuilder {
     updateOperation(operationId, updates) {
         const operation = this.getOperation(operationId);
         if (operation) {
+            const oldDifficulty = operation.difficulty;
             Object.assign(operation, updates);
+            
+            // If difficulty changed, update missions
+            if (updates.difficulty && updates.difficulty !== oldDifficulty) {
+                operation.updateMissions();
+            }
+            
             operation.validate();
         }
+    }
+
+    // Mission management methods
+    getMission(operationId, missionId) {
+        const operation = this.getOperation(operationId);
+        if (operation) {
+            return operation.missions.find(mission => mission.id === missionId);
+        }
+        return null;
+    }
+
+    updateMissionModifiers(operationId, missionId, modifiers) {
+        const mission = this.getMission(operationId, missionId);
+        if (mission) {
+            mission.modifiers = Array.isArray(modifiers) ? [...modifiers] : [];
+            return true;
+        }
+        return false;
+    }
+
+    addModifierToMission(operationId, missionId, modifier) {
+        const mission = this.getMission(operationId, missionId);
+        if (mission && !mission.modifiers.includes(modifier)) {
+            mission.modifiers.push(modifier);
+            return true;
+        }
+        return false;
+    }
+
+    removeModifierFromMission(operationId, missionId, modifier) {
+        const mission = this.getMission(operationId, missionId);
+        if (mission) {
+            const index = mission.modifiers.indexOf(modifier);
+            if (index > -1) {
+                mission.modifiers.splice(index, 1);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Get available modifiers (from mission-types.js)
+    getAvailableModifiers() {
+        // Try multiple ways to access the modifiers
+        let modifiers = [];
+        
+        // First try direct access
+        if (window.MISSION_TYPES && window.MISSION_TYPES.MODIFIERS) {
+            modifiers = window.MISSION_TYPES.MODIFIERS;
+        } 
+        // Try global scope access
+        else if (typeof MISSION_TYPES !== 'undefined' && MISSION_TYPES.MODIFIERS) {
+            modifiers = MISSION_TYPES.MODIFIERS;
+        }
+        // Fallback: wait a moment and try again (async loading issue)
+        else if (modifiers.length === 0) {
+            console.warn('MISSION_TYPES not available, using fallback modifiers');
+            // Return a subset of commonly used modifiers as fallback
+            modifiers = [
+                { name: "Fire-Based Loadouts", description: "Equip incendiary weapons and stratagems, embrace the cleansing flame of democracy" },
+                { name: "Laser-Based Loadouts", description: "Utilize energy weapons and laser-based equipment for precision strikes" },
+                { name: "Arc-Based Loadouts", description: "Deploy electrical weapons and arc technology to chain through enemy ranks" },
+                { name: "Explosive Ordnance Focus", description: "Maximize use of grenades, mines, and explosive stratagems" },
+                { name: "Orbital Support Priority", description: "Rely heavily on orbital stratagems" },
+                { name: "Eagle Close Air Support", description: "Rely heavily on Eagle-1 stratagems" },
+                { name: "Long Range Engagement", description: "Maintain distance and utilize sniper rifles and long-range support weapons" },
+                { name: "Close Quarters Combat", description: "Engage enemies at close range with shotguns, SMGs, and other short-range weapons" },
+                { name: "Heavy Weapons Focus", description: "Prioritize support weapons and anti-tank equipment over lighter armaments" },
+                { name: "Rapid Deployment", description: "Complete objectives with maximum speed and efficiency, minimize time spent in this mission" }
+            ];
+        }
+        
+        console.log('Available modifiers:', modifiers.length, modifiers);
+        return modifiers;
+    }
+
+    // Force refresh modifiers and update UI
+    refreshModifiersUI() {
+        // Try to get fresh modifiers
+        const modifiers = this.getAvailableModifiers();
+        console.log('Refreshing modifiers UI with', modifiers.length, 'modifiers');
+        
+        // Update all existing operation cards
+        this.campaign.operations.forEach(operation => {
+            if (window.app && window.app.refreshOperationMissions) {
+                window.app.refreshOperationMissions(operation.id);
+            }
+        });
+    }
+
+    // Auto-assign random modifiers to all missions in an operation
+    assignRandomModifiers(operationId, modifiersPerMission = 1) {
+        const operation = this.getOperation(operationId);
+        const availableModifiers = this.getAvailableModifiers();
+        
+        if (operation && availableModifiers.length > 0) {
+            operation.missions.forEach(mission => {
+                mission.modifiers = [];
+                const shuffled = [...availableModifiers].sort(() => 0.5 - Math.random());
+                const count = Math.min(modifiersPerMission, shuffled.length);
+                
+                for (let i = 0; i < count; i++) {
+                    mission.modifiers.push(shuffled[i].name);
+                }
+            });
+            return true;
+        }
+        return false;
     }
 
     validateCampaign() {
@@ -288,32 +468,86 @@ class CampaignBuilder {
         }
 
         // Convert operations to the format expected by the tour system
+        // Now we export individual missions with their modifiers
         const missions = [];
+        let missionId = 0;
         
         for (let i = 0; i < this.campaign.operations.length; i++) {
             const operation = this.campaign.operations[i];
             
-            // Create mission object compatible with existing system
-            const mission = {
-                id: i,
-                name: operation.name,
-                planet: operation.planet,
-                faction: operation.faction,
-                difficulty: {
-                    level: operation.difficulty,
-                    name: this.getDifficultyName(operation.difficulty)
-                },
-                city: operation.city,
-                briefing: operation.briefingText || this.generateDefaultBriefing(operation),
-                transitionText: operation.transitionText || '',
-                enableFallback: operation.enableFallback,
-                customPrimaryTitle: operation.primaryObjectiveTitle,
-                customPrimaryDescription: operation.primaryObjectiveDescription,
-                customSecondaryDescription: operation.secondaryObjectiveDescription,
-                isCustom: true
-            };
+            // Extract biome and hazard strings using API service methods
+            const biome = apiService.getPlanetBiome(operation.planet);
+            const hazard = apiService.getPlanetHazard(operation.planet);
             
-            missions.push(mission);
+            // Create missions based on operation's mission array
+            if (operation.missions && operation.missions.length > 0) {
+                operation.missions.forEach((missionData, missionIndex) => {
+                    const mission = {
+                        id: missionId++,
+                        name: `${operation.name} - ${missionData.name}`,
+                        operationName: operation.name,
+                        missionIndex: missionIndex,
+                        planet: {
+                            name: operation.planet.name,
+                            sector: operation.planet.sector || "Unknown Sector",
+                            biome: biome,
+                            hazard: hazard,
+                            hazardDescription: hazard !== "None" ? `Environmental hazard: ${hazard}` : "Standard conditions",
+                            isDefense: operation.planet.isDefense || false,
+                            displayName: operation.planet.displayName || `${operation.planet.name} - ${operation.planet.sector || "Unknown Sector"}`
+                        },
+                        faction: operation.faction,
+                        difficulty: {
+                            level: operation.difficulty,
+                            name: this.getDifficultyName(operation.difficulty)
+                        },
+                        city: operation.city,
+                        briefing: operation.briefingText || this.generateDefaultBriefing(operation),
+                        transitionText: missionIndex === operation.missions.length - 1 ? operation.transitionText || '' : '',
+                        enableFallback: operation.enableFallback,
+                        customPrimaryTitle: operation.primaryObjectiveTitle,
+                        customPrimaryDescription: operation.primaryObjectiveDescription,
+                        customSecondaryDescription: operation.secondaryObjectiveDescription,
+                        modifiers: [...(missionData.modifiers || [])],
+                        isCustom: true
+                    };
+                    
+                    missions.push(mission);
+                });
+            } else {
+                // Fallback for operations without missions data (shouldn't happen with new system)
+                const mission = {
+                    id: missionId++,
+                    name: operation.name,
+                    operationName: operation.name,
+                    missionIndex: 0,
+                    planet: {
+                        name: operation.planet.name,
+                        sector: operation.planet.sector || "Unknown Sector",
+                        biome: biome,
+                        hazard: hazard,
+                        hazardDescription: hazard !== "None" ? `Environmental hazard: ${hazard}` : "Standard conditions",
+                        isDefense: operation.planet.isDefense || false,
+                        displayName: operation.planet.displayName || `${operation.planet.name} - ${operation.planet.sector || "Unknown Sector"}`
+                    },
+                    faction: operation.faction,
+                    difficulty: {
+                        level: operation.difficulty,
+                        name: this.getDifficultyName(operation.difficulty)
+                    },
+                    city: operation.city,
+                    briefing: operation.briefingText || this.generateDefaultBriefing(operation),
+                    transitionText: operation.transitionText || '',
+                    enableFallback: operation.enableFallback,
+                    customPrimaryTitle: operation.primaryObjectiveTitle,
+                    customPrimaryDescription: operation.primaryObjectiveDescription,
+                    customSecondaryDescription: operation.secondaryObjectiveDescription,
+                    modifiers: [],
+                    isCustom: true
+                };
+                
+                missions.push(mission);
+            }
         }
 
         // Generate campaign narrative structure
@@ -368,23 +602,56 @@ class CampaignBuilder {
 
             // Import operations from missions
             if (campaignData.missions && Array.isArray(campaignData.missions)) {
-                campaignData.missions.forEach((mission, index) => {
-                    const operation = new Operation(index);
-                    operation.name = mission.name || `Operation ${index + 1}`;
-                    operation.faction = mission.faction;
-                    operation.planet = mission.planet;
-                    operation.city = mission.city || null;
-                    operation.difficulty = mission.difficulty?.level || mission.difficulty || 5;
-                    operation.enableFallback = mission.enableFallback !== undefined ? mission.enableFallback : true;
-                    operation.briefingText = mission.briefing || '';
-                    operation.transitionText = mission.transitionText || '';
-                    operation.primaryObjectiveTitle = mission.customPrimaryTitle || '';
-                    operation.primaryObjectiveDescription = mission.customPrimaryDescription || '';
-                    operation.secondaryObjectiveDescription = mission.customSecondaryDescription || '';
-                    operation.validate();
-                    
-                    this.campaign.operations.push(operation);
+                // Group missions by operation (new format) or treat each as separate operation (legacy format)
+                const missionGroups = new Map();
+                
+                campaignData.missions.forEach(mission => {
+                    // Check if this is new format (has operationName and missionIndex)
+                    if (mission.operationName !== undefined && mission.missionIndex !== undefined) {
+                        // New format: group by operationName
+                        if (!missionGroups.has(mission.operationName)) {
+                            missionGroups.set(mission.operationName, []);
+                        }
+                        missionGroups.get(mission.operationName).push(mission);
+                    } else {
+                        // Legacy format: each mission is its own operation
+                        const operationName = mission.name || `Operation ${missionGroups.size + 1}`;
+                        missionGroups.set(operationName, [mission]);
+                    }
                 });
+                
+                // Create operations from grouped missions
+                let operationIndex = 0;
+                for (const [operationName, missions] of missionGroups) {
+                    const firstMission = missions[0];
+                    const operation = new Operation(operationIndex++);
+                    
+                    // Set operation properties from first mission
+                    operation.name = operationName;
+                    operation.faction = firstMission.faction;
+                    operation.planet = firstMission.planet;
+                    operation.city = firstMission.city || null;
+                    operation.difficulty = firstMission.difficulty?.level || firstMission.difficulty || 5;
+                    operation.enableFallback = firstMission.enableFallback !== undefined ? firstMission.enableFallback : true;
+                    operation.briefingText = firstMission.briefing || '';
+                    operation.primaryObjectiveTitle = firstMission.customPrimaryTitle || '';
+                    operation.primaryObjectiveDescription = firstMission.customPrimaryDescription || '';
+                    operation.secondaryObjectiveDescription = firstMission.customSecondaryDescription || '';
+                    
+                    // Find transition text from the last mission in this operation
+                    const lastMission = missions[missions.length - 1];
+                    operation.transitionText = lastMission.transitionText || '';
+                    
+                    // Import mission data with modifiers
+                    operation.missions = missions.map((mission, mIndex) => ({
+                        id: `mission_${mIndex + 1}`,
+                        name: `Mission ${mIndex + 1}`,
+                        modifiers: Array.isArray(mission.modifiers) ? [...mission.modifiers] : []
+                    }));
+                    
+                    operation.validate();
+                    this.campaign.operations.push(operation);
+                }
             }
 
             console.log(`Imported campaign "${this.campaign.name}" with ${this.campaign.operations.length} operations`);

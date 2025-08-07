@@ -4908,6 +4908,16 @@ class App {
         const container = document.getElementById('operations-container');
         const operationElement = this.createOperationElement(operation);
         container.appendChild(operationElement);
+        
+        // Ensure modifiers are properly loaded for this operation
+        setTimeout(() => {
+            console.log('Checking modifiers for new operation...');
+            const modifiers = campaignBuilder.getAvailableModifiers();
+            if (modifiers.length === 0) {
+                console.warn('No modifiers available, trying to refresh...');
+                campaignBuilder.refreshModifiersUI();
+            }
+        }, 50);
     }
 
     createOperationElement(operation) {
@@ -4987,6 +4997,16 @@ class App {
                     </div>
                 </div>
                 
+                <div class="operation-missions">
+                    <div class="missions-header">
+                        <label>Mission Modifiers:</label>
+                        <button type="button" class="randomize-modifiers-btn" data-operation-id="${operation.id}">🎲 Random</button>
+                    </div>
+                    <div class="missions-list" data-operation-id="${operation.id}">
+                        ${this.renderMissionsList(operation)}
+                    </div>
+                </div>
+                
                 <div class="operation-objectives">
                     <div class="objective-field">
                         <label>Primary Objective Title:</label>
@@ -5037,6 +5057,58 @@ class App {
                 ${diff.value} - ${diff.name}
             </option>`
         ).join('');
+    }
+
+    renderMissionsList(operation) {
+        if (!operation.missions || operation.missions.length === 0) {
+            return '<div class="no-missions">No missions (select difficulty first)</div>';
+        }
+
+        const availableModifiers = campaignBuilder.getAvailableModifiers();
+        console.log('renderMissionsList - availableModifiers:', availableModifiers);
+        
+        if (availableModifiers.length === 0) {
+            return '<div class="no-missions">No modifiers available - check console for errors</div>';
+        }
+        
+        return operation.missions.map(mission => {
+            const modifierCheckboxes = availableModifiers.map(modifier => {
+                const isChecked = mission.modifiers.includes(modifier.name);
+                return `
+                    <label class="modifier-checkbox">
+                        <input type="checkbox" 
+                               data-operation-id="${operation.id}" 
+                               data-mission-id="${mission.id}" 
+                               data-modifier="${modifier.name}" 
+                               ${isChecked ? 'checked' : ''}>
+                        <span class="modifier-name">${modifier.name}</span>
+                        <span class="modifier-description">${modifier.description}</span>
+                    </label>
+                `;
+            }).join('');
+
+            const modifierCount = mission.modifiers.length;
+            const modifierSummary = modifierCount > 0 ? 
+                `${modifierCount} modifier${modifierCount !== 1 ? 's' : ''}` : 
+                'No modifiers';
+
+            return `
+                <div class="mission-card" data-mission-id="${mission.id}">
+                    <div class="mission-header">
+                        <h4>${mission.name}</h4>
+                        <span class="modifier-count">${modifierSummary}</span>
+                        <button type="button" class="toggle-modifiers-btn" data-mission-id="${mission.id}">
+                            <span class="toggle-icon">▶</span>
+                        </button>
+                    </div>
+                    <div class="mission-modifiers" data-mission-id="${mission.id}" style="display: none;">
+                        <div class="modifier-grid">
+                            ${modifierCheckboxes}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     async setupOperationListeners(operationElement, operation) {
@@ -5100,6 +5172,32 @@ class App {
             
             const secondaryDescriptionText = operationElement.querySelector('.operation-secondary-description-textarea');
             secondaryDescriptionText.addEventListener('input', (e) => this.handleOperationChange(operationId, 'secondaryObjectiveDescription', e.target.value));
+            
+            // Mission modifier controls
+            const randomizeBtn = operationElement.querySelector('.randomize-modifiers-btn');
+            if (randomizeBtn) {
+                randomizeBtn.addEventListener('click', () => this.handleRandomizeModifiers(operationId));
+            }
+            
+            // Toggle modifier sections
+            const toggleButtons = operationElement.querySelectorAll('.toggle-modifiers-btn');
+            toggleButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const missionId = btn.dataset.missionId;
+                    this.toggleMissionModifiers(operationId, missionId);
+                });
+            });
+            
+            // Modifier checkboxes
+            const modifierCheckboxes = operationElement.querySelectorAll('.modifier-checkbox input[type="checkbox"]');
+            modifierCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const missionId = e.target.dataset.missionId;
+                    const modifier = e.target.dataset.modifier;
+                    const isChecked = e.target.checked;
+                    this.handleModifierChange(operationId, missionId, modifier, isChecked);
+                });
+            });
             
             // Drag and drop
             operationElement.addEventListener('dragstart', (e) => this.handleDragStart(e, operationId));
@@ -5259,6 +5357,12 @@ class App {
 
     handleOperationChange(operationId, field, value) {
         campaignBuilder.updateOperation(operationId, { [field]: value });
+        
+        // If difficulty changed, refresh the missions UI
+        if (field === 'difficulty') {
+            this.refreshOperationMissions(operationId);
+        }
+        
         this.updateOperationStatus(operationId);
         this.updateValidationStatus();
     }
@@ -5381,6 +5485,85 @@ class App {
         } else {
             validationElement.style.display = 'none';
         }
+    }
+
+    // Mission modifier handlers
+    handleRandomizeModifiers(operationId) {
+        const success = campaignBuilder.assignRandomModifiers(operationId, 1);
+        if (success) {
+            this.refreshOperationMissions(operationId);
+        }
+    }
+
+    handleModifierChange(operationId, missionId, modifier, isChecked) {
+        if (isChecked) {
+            campaignBuilder.addModifierToMission(operationId, missionId, modifier);
+        } else {
+            campaignBuilder.removeModifierFromMission(operationId, missionId, modifier);
+        }
+        this.updateMissionModifierCount(operationId, missionId);
+    }
+
+    toggleMissionModifiers(operationId, missionId) {
+        const modifiersSection = document.querySelector(`[data-operation-id="${operationId}"] .mission-modifiers[data-mission-id="${missionId}"]`);
+        const toggleIcon = document.querySelector(`[data-operation-id="${operationId}"] .toggle-modifiers-btn[data-mission-id="${missionId}"] .toggle-icon`);
+        
+        if (modifiersSection && toggleIcon) {
+            const isVisible = modifiersSection.style.display !== 'none';
+            modifiersSection.style.display = isVisible ? 'none' : 'block';
+            toggleIcon.textContent = isVisible ? '▶' : '▼';
+        }
+    }
+
+    updateMissionModifierCount(operationId, missionId) {
+        const mission = campaignBuilder.getMission(operationId, missionId);
+        if (mission) {
+            const countElement = document.querySelector(`[data-operation-id="${operationId}"] .mission-card[data-mission-id="${missionId}"] .modifier-count`);
+            if (countElement) {
+                const modifierCount = mission.modifiers.length;
+                const modifierSummary = modifierCount > 0 ? 
+                    `${modifierCount} modifier${modifierCount !== 1 ? 's' : ''}` : 
+                    'No modifiers';
+                countElement.textContent = modifierSummary;
+            }
+        }
+    }
+
+    refreshOperationMissions(operationId) {
+        const operation = campaignBuilder.getOperation(operationId);
+        if (operation) {
+            const missionsListElement = document.querySelector(`[data-operation-id="${operationId}"] .missions-list`);
+            if (missionsListElement) {
+                missionsListElement.innerHTML = this.renderMissionsList(operation);
+                // Re-attach event listeners for the new elements
+                const operationElement = document.querySelector(`[data-operation-id="${operationId}"]`);
+                this.setupMissionListeners(operationElement, operation);
+            }
+        }
+    }
+
+    setupMissionListeners(operationElement, operation) {
+        const operationId = operation.id;
+        
+        // Toggle modifier sections
+        const toggleButtons = operationElement.querySelectorAll('.toggle-modifiers-btn');
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const missionId = btn.dataset.missionId;
+                this.toggleMissionModifiers(operationId, missionId);
+            });
+        });
+        
+        // Modifier checkboxes
+        const modifierCheckboxes = operationElement.querySelectorAll('.modifier-checkbox input[type="checkbox"]');
+        modifierCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const missionId = e.target.dataset.missionId;
+                const modifier = e.target.dataset.modifier;
+                const isChecked = e.target.checked;
+                this.handleModifierChange(operationId, missionId, modifier, isChecked);
+            });
+        });
     }
 
     refreshBuilderUI() {
