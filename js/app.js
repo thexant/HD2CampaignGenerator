@@ -783,7 +783,7 @@ class App {
         
         // Sort squad members: active first, then inactive, then departed
         const sortedMembers = [...this.squadMembers].sort((a, b) => {
-            const statusOrder = { 'active': 0, 'inactive': 1, 'departed': 2 };
+            const statusOrder = { 'active': 0, 'departed': 1 };
             const statusDiff = statusOrder[a.status] - statusOrder[b.status];
             if (statusDiff !== 0) return statusDiff;
             // If same status, sort alphabetically by name
@@ -800,7 +800,7 @@ class App {
                 margin-bottom: 0.5rem;
                 background: #2a2a2a;
                 border-radius: 4px;
-                border-left: 4px solid ${member.status === 'active' ? '#4CAF50' : member.status === 'inactive' ? '#FF9800' : '#666'};
+                border-left: 4px solid ${member.status === 'active' ? '#4CAF50' : '#666'};
             `;
 
             memberDiv.innerHTML = `
@@ -811,7 +811,6 @@ class App {
                 <div>
                     <select data-member-name="${member.name}" style="background: #1a1a1a; color: white; border: 1px solid #555; border-radius: 4px; padding: 0.25rem;">
                         <option value="active" ${member.status === 'active' ? 'selected' : ''}>Active</option>
-                        <option value="inactive" ${member.status === 'inactive' ? 'selected' : ''}>Sitting Out</option>
                         <option value="departed" ${member.status === 'departed' ? 'selected' : ''}>Left Squad</option>
                     </select>
                 </div>
@@ -843,9 +842,19 @@ class App {
         }
         
         const trimmedName = name.trim();
-        if (this.squadMembers.find(m => m.name === trimmedName)) {
-            console.warn(`Cannot add squad member: "${trimmedName}" already exists`);
-            return false;
+        const existingMember = this.squadMembers.find(m => m.name === trimmedName);
+        
+        if (existingMember) {
+            if (existingMember.status === 'departed') {
+                // Reactivate the existing departed member
+                existingMember.status = 'active';
+                console.log(`Reactivated returning squad member: "${trimmedName}"`);
+                return true;
+            } else {
+                // Member is already active
+                console.warn(`Cannot add squad member: "${trimmedName}" is already active`);
+                return false;
+            }
         }
         
         // Add new member with unique ID for better tracking
