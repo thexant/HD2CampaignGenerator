@@ -9,6 +9,7 @@ class App {
         // Per-mission tracking for multi-user group progression
         this.missionHistory = []; // Track squad composition and stats per individual mission
         this.currentMissionInOperation = 0; // Track which mission within the current operation (0-indexed)
+        this.squadManagementInProgress = false; // Prevent duplicate squad management dialogs
         // Background data loading state
         this.backgroundDataLoading = false;
         this.backgroundDataReady = false;
@@ -664,6 +665,14 @@ class App {
             return Promise.resolve(true);
         }
 
+        // Prevent duplicate calls
+        if (this.squadManagementInProgress) {
+            console.warn('Squad management dialog already in progress, skipping duplicate call');
+            return Promise.resolve(true);
+        }
+
+        this.squadManagementInProgress = true;
+
         return new Promise((resolve) => {
             const dialog = document.createElement('div');
             dialog.className = 'squad-management-dialog';
@@ -728,11 +737,13 @@ class App {
             });
 
             document.getElementById('proceed-with-squad').addEventListener('click', () => {
+                this.squadManagementInProgress = false;
                 document.body.removeChild(dialog);
                 resolve(true);
             });
 
             document.getElementById('cancel-squad-management').addEventListener('click', () => {
+                this.squadManagementInProgress = false;
                 document.body.removeChild(dialog);
                 resolve(false);
             });
@@ -3009,23 +3020,13 @@ class App {
         return briefings[Math.floor(Math.random() * briefings.length)];
     }
 
-    async handleAcknowledgeBriefing() {
+    handleAcknowledgeBriefing() {
         // Hide briefing, show current mission
         document.getElementById('democracy-briefing').style.display = 'none';
         document.getElementById('current-mission-display').style.display = 'block';
         
-        // For stats mode, show squad management dialog first
-        if (this.statsMode) {
-            const proceed = await this.showSquadManagementDialog();
-            if (!proceed) {
-                // User cancelled, show briefing again
-                document.getElementById('democracy-briefing').style.display = 'block';
-                document.getElementById('current-mission-display').style.display = 'none';
-                return;
-            }
-        }
-        
-        // Display current mission
+        // Squad members are already configured during tour setup, no need to ask again for first mission
+        // Display current mission directly
         this.displayCurrentTourMission();
     }
 
