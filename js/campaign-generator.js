@@ -63,7 +63,7 @@ class CampaignGenerator {
 
     async generateMissions(planets, campaignLength, preferences) {
         const missions = [];
-        const usedPlanets = new Set();
+        const usedPlanets = new Map(); // Track planet usage count instead of just existence
         
         // If planets are already themed/filtered, use them directly, otherwise filter to enemy planets
         const availablePlanets = (preferences.themedPlanets && preferences.themedPlanets.length > 0) 
@@ -99,17 +99,23 @@ class CampaignGenerator {
                 continue;
             }
             
-            const mission = missionGenerator.generateMission(planet, i, campaignLength, preferences, missions);
+            // Add variation to ensure different missions even on same planet
+            const missionVariation = {
+                ...preferences,
+                _missionIndex: i,
+                _randomSeed: Math.random() // Add randomization
+            };
+            
+            const mission = missionGenerator.generateMission(planet, i, campaignLength, missionVariation, missions);
             
             
             const adjustedMission = missionGenerator.adjustMissionForBalance(mission, missions, preferences);
             
             missions.push(adjustedMission);
             
-            
-            if (availablePlanets.length > campaignLength) {
-                usedPlanets.add(planet.id);
-            }
+            // Always track planet usage to avoid excessive reuse
+            const planetUsageCount = usedPlanets.get(planet.id) || 0;
+            usedPlanets.set(planet.id, planetUsageCount + 1);
         }
         
         

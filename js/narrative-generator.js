@@ -582,6 +582,14 @@ class NarrativeGenerator {
         return `${adj} ${noun}`;
     }
 
+    getUniqueNameSuffix() {
+        const suffixes = [
+            'Alpha', 'Beta', 'Prime', 'Secondary', 'Extended', 'Revised', 
+            'Phase II', 'Redux', 'Advanced', 'Continued', 'Final'
+        ];
+        return suffixes[Math.floor(Math.random() * suffixes.length)];
+    }
+
 
     determineCampaignTheme(missions) {
         const factions = missions.map(m => m.faction);
@@ -639,11 +647,25 @@ class NarrativeGenerator {
         const mainGoal = this.generateCampaignGoal(theme, dominantFaction, missions);
         const backstory = this.generateCampaignBackstory(theme, dominantFaction, missions);
         
-        // Generate mission names
-        const enhancedMissions = missions.map((mission, index) => ({
-            ...mission,
-            name: this.generateMissionName(mission, index, missions.length)
-        }));
+        // Generate mission names with uniqueness tracking
+        const usedNames = new Set();
+        const enhancedMissions = missions.map((mission, index) => {
+            let generatedName = this.generateMissionName(mission, index, missions.length);
+            let attempt = 0;
+            
+            // Ensure name is unique by adding suffixes if needed
+            while (usedNames.has(generatedName) && attempt < 10) {
+                attempt++;
+                generatedName = this.generateMissionName(mission, index, missions.length) + ` ${this.getUniqueNameSuffix()}`;
+            }
+            
+            usedNames.add(generatedName);
+            
+            return {
+                ...mission,
+                name: generatedName
+            };
+        });
         
         return {
             name: campaignName,

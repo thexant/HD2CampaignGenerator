@@ -9,12 +9,21 @@ class App {
         // Per-mission tracking for multi-user group progression
         this.missionHistory = []; // Track squad composition and stats per individual mission
         this.currentMissionInOperation = 0; // Track which mission within the current operation (0-indexed)
+        this.currentAbsoluteMissionIndex = 0; // Track absolute mission index for imported campaigns
+        this.currentMissionSquad = []; // Track squad composition for the mission currently being played
         this.squadManagementInProgress = false; // Prevent duplicate squad management dialogs
         // Background data loading state
         this.backgroundDataLoading = false;
         this.backgroundDataReady = false;
         this.backgroundDataError = null;
         this.init();
+    }
+
+    // Check if the current tour is an imported campaign with flat mission structure
+    isImportedCampaign() {
+        return this.currentTour && 
+               this.currentTour.metadata && 
+               (this.currentTour.metadata.isImportedCampaign || this.currentTour.metadata.type === 'custom');
     }
 
     init() {
@@ -628,6 +637,7 @@ class App {
 
     initializeSquadMembers() {
         this.squadMembers = [];
+        this.currentMissionSquad = []; // Reset mission squad tracking
         
         for (let i = 1; i <= 4; i++) {
             const nameInput = document.getElementById(`squad-member-${i}`);
@@ -728,11 +738,20 @@ class App {
                     input.focus();
                     btn.textContent = 'Add';
                 } else {
-                    this.addNewSquadMember(input.value.trim());
-                    input.value = '';
-                    input.style.display = 'none';
-                    btn.textContent = 'Add New Member';
-                    this.populateSquadManagementList();
+                    console.log('Attempting to add new squad member:', input.value.trim());
+                    const success = this.addNewSquadMember(input.value.trim());
+                    console.log('Add member result:', success);
+                    if (success) {
+                        input.value = '';
+                        input.style.display = 'none';
+                        btn.textContent = 'Add New Member';
+                        this.populateSquadManagementList();
+                        console.log('Squad management list repopulated after adding member');
+                    } else {
+                        // Keep input visible for user to correct
+                        input.focus();
+                        input.select();
+                    }
                 }
             });
 
@@ -772,8 +791,6 @@ class App {
         });
         
         sortedMembers.forEach((member, sortedIndex) => {
-            // Find the original index in the unsorted array
-            const originalIndex = this.squadMembers.findIndex(m => m.name === member.name);
             const memberDiv = document.createElement('div');
             memberDiv.style.cssText = `
                 display: flex;
@@ -792,7 +809,7 @@ class App {
                     <small style="color: #999; margin-left: 0.5rem;">(${member.missionsCompleted} missions)</small>
                 </div>
                 <div>
-                    <select data-member-index="${originalIndex}" style="background: #1a1a1a; color: white; border: 1px solid #555; border-radius: 4px; padding: 0.25rem;">
+                    <select data-member-name="${member.name}" style="background: #1a1a1a; color: white; border: 1px solid #555; border-radius: 4px; padding: 0.25rem;">
                         <option value="active" ${member.status === 'active' ? 'selected' : ''}>Active</option>
                         <option value="inactive" ${member.status === 'inactive' ? 'selected' : ''}>Sitting Out</option>
                         <option value="departed" ${member.status === 'departed' ? 'selected' : ''}>Left Squad</option>
@@ -801,10 +818,17 @@ class App {
             `;
 
             const select = memberDiv.querySelector('select');
-            select.addEventListener('change', (e) => {
-                const memberIndex = parseInt(e.target.dataset.memberIndex);
-                this.squadMembers[memberIndex].status = e.target.value;
-                this.populateSquadManagementList(); // Refresh to update colors and sorting
+            // Remove any existing event listeners to prevent duplicates
+            const selectClone = select.cloneNode(true);
+            select.parentNode.replaceChild(selectClone, select);
+            
+            selectClone.addEventListener('change', (e) => {
+                const memberName = e.target.dataset.memberName;
+                const memberObject = this.squadMembers.find(m => m.name === memberName);
+                if (memberObject) {
+                    memberObject.status = e.target.value;
+                    this.populateSquadManagementList(); // Refresh to update colors and sorting
+                }
             });
 
             container.appendChild(memberDiv);
@@ -812,10 +836,22 @@ class App {
     }
 
     addNewSquadMember(name) {
-        if (!name || this.squadMembers.find(m => m.name === name)) return;
+        // Validate name and check for duplicates
+        if (!name || !name.trim()) {
+            console.warn('Cannot add squad member: empty name');
+            return false;
+        }
         
+        const trimmedName = name.trim();
+        if (this.squadMembers.find(m => m.name === trimmedName)) {
+            console.warn(`Cannot add squad member: "${trimmedName}" already exists`);
+            return false;
+        }
+        
+        // Add new member with unique ID for better tracking
         this.squadMembers.push({
-            name: name,
+            id: `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: trimmedName,
             kills: {
                 total: 0,
                 byFaction: {
@@ -829,10 +865,16 @@ class App {
             missionsCompleted: 0,
             status: 'active'
         });
+        
+        console.log(`Added new squad member: "${trimmedName}"`);
+        return true;
     }
 
     getActiveSquadMembers() {
-        return this.squadMembers.filter(member => member.status === 'active');
+        const activeMembers = this.squadMembers.filter(member => member.status === 'active');
+        console.log('getActiveSquadMembers called - all members:', this.squadMembers.map(m => ({name: m.name, status: m.status})));
+        console.log('getActiveSquadMembers called - active members:', activeMembers.map(m => m.name));
+        return activeMembers;
     }
 
     // Helper method to get comprehensive mission stats from history
@@ -1006,6 +1048,10 @@ class App {
             const proceed = await this.showSquadManagementDialog();
             if (!proceed) return;
             
+            // Capture squad composition after squad management is complete (deep copy)
+            this.currentMissionSquad = this.getActiveSquadMembers().map(member => ({...member}));
+            console.log('Squad captured after squad management:', this.currentMissionSquad.map(m => m.name));
+            
             // Display the mission
             this.displayMissionAfterSquadManagement();
         } else {
@@ -1018,17 +1064,37 @@ class App {
     incrementMissionIndices() {
         const tour = this.currentTour;
         
-        // Check if we need to move to next mission within operation or next operation
-        this.currentMissionInOperation++;
-        
-        // Get current operation's difficulty to determine how many missions it should have
-        const currentOperation = tour.missions[tour.currentMissionIndex];
-        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
-        
-        if (this.currentMissionInOperation >= missionsInThisOperation) {
-            // Move to next operation
-            this.currentMissionInOperation = 0;
-            tour.currentMissionIndex++;
+        if (this.isImportedCampaign()) {
+            // For imported campaigns, advance absolute mission index
+            this.currentAbsoluteMissionIndex++;
+            
+            // Update operation tracking based on the mission's operationName
+            const currentMission = tour.missions[this.currentAbsoluteMissionIndex];
+            const previousMission = tour.missions[this.currentAbsoluteMissionIndex - 1];
+            
+            if (currentMission && previousMission) {
+                // Check if we moved to a new operation
+                if (currentMission.operationName !== previousMission.operationName) {
+                    tour.currentMissionIndex++;
+                    this.currentMissionInOperation = 0;
+                } else {
+                    this.currentMissionInOperation++;
+                }
+            }
+        } else {
+            // Original logic for generated campaigns
+            // Check if we need to move to next mission within operation or next operation
+            this.currentMissionInOperation++;
+            
+            // Get current operation's difficulty to determine how many missions it should have
+            const currentOperation = tour.missions[tour.currentMissionIndex];
+            const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+            
+            if (this.currentMissionInOperation >= missionsInThisOperation) {
+                // Move to next operation
+                this.currentMissionInOperation = 0;
+                tour.currentMissionIndex++;
+            }
         }
     }
 
@@ -1036,7 +1102,12 @@ class App {
     displayMissionAfterSquadManagement() {
         const tour = this.currentTour;
         
-        if (tour.currentMissionIndex >= tour.missions.length) {
+        // Check if tour is completed based on campaign type
+        const isCompleted = this.isImportedCampaign() ? 
+            this.currentAbsoluteMissionIndex >= tour.missions.length :
+            tour.currentMissionIndex >= tour.missions.length;
+            
+        if (isCompleted) {
             // Tour completed!
             this.completeTour();
             return;
@@ -1102,8 +1173,11 @@ class App {
         const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
         const missionInOp = this.currentMissionInOperation + 1;
         
-        // Only show stats for active squad members for this single mission
-        const activeMembers = this.getActiveSquadMembers();
+        // Only show stats for squad members who participated in this mission
+        const activeMembers = this.currentMissionSquad.length > 0 ? this.currentMissionSquad : this.getActiveSquadMembers();
+        console.log('Stats dialog - currentMissionSquad:', this.currentMissionSquad.map(m => m.name));
+        console.log('Stats dialog - current active members:', this.getActiveSquadMembers().map(m => m.name));
+        console.log('Stats dialog - using members:', activeMembers.map(m => m.name));
         
         // Create stats input for each active squad member
         activeMembers.forEach((member, memberIndex) => {
@@ -1793,6 +1867,10 @@ class App {
             
             if (tour) {
                 this.currentTour = tour;
+                // Reset tracking variables for new tour
+                this.currentMissionInOperation = 0;
+                this.currentAbsoluteMissionIndex = 0;
+                
                 this.displayTourBriefing(tour);
                 this.hideLoading();
             } else {
@@ -2768,8 +2846,19 @@ class App {
     }
 
     updateDualProgressIndicators(tour, animated = true) {
-        const currentOperation = tour.missions[tour.currentMissionIndex];
-        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        // Get the actual mission index and current operation for display
+        const actualMissionIndex = this.isImportedCampaign() ? this.currentAbsoluteMissionIndex : tour.currentMissionIndex;
+        const currentOperation = tour.missions[actualMissionIndex] || tour.missions[tour.currentMissionIndex];
+        
+        // For imported campaigns, calculate missions in operation from the mission's metadata
+        let missionsInThisOperation;
+        if (this.isImportedCampaign() && currentOperation) {
+            // Count missions with the same operation name
+            const currentOpName = currentOperation.operationName;
+            missionsInThisOperation = tour.missions.filter(m => m.operationName === currentOpName).length;
+        } else {
+            missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        }
         
         // Update campaign level progress
         const campaignProgressFill = document.getElementById('campaign-progress-fill');
@@ -2778,15 +2867,19 @@ class App {
         
         // Update operation level progress  
         const operationProgressFill = document.getElementById('operation-progress-fill');
-        const currentMissionInOperation = document.getElementById('current-mission-in-operation');
+        const currentMissionInOperationEl = document.getElementById('current-mission-in-operation');
         const totalMissionsInOperation = document.getElementById('total-missions-in-operation');
         
         if (campaignProgressFill && currentMissionNumber && totalMissions) {
-            // Calculate campaign progress percentage
-            const campaignProgress = (tour.currentMissionIndex / tour.missions.length) * 100;
+            // Calculate campaign progress percentage based on actual mission progress
+            const campaignProgress = this.isImportedCampaign() ? 
+                (this.currentAbsoluteMissionIndex / tour.missions.length) * 100 :
+                (tour.currentMissionIndex / tour.missions.length) * 100;
             
-            // Update text
-            currentMissionNumber.textContent = tour.currentMissionIndex + 1;
+            // Update text - show actual mission number for imported campaigns
+            currentMissionNumber.textContent = this.isImportedCampaign() ? 
+                this.currentAbsoluteMissionIndex + 1 :
+                tour.currentMissionIndex + 1;
             totalMissions.textContent = tour.missions.length;
             
             // Animate progress bar if requested
@@ -2797,12 +2890,12 @@ class App {
             }
         }
         
-        if (operationProgressFill && currentMissionInOperation && totalMissionsInOperation) {
+        if (operationProgressFill && currentMissionInOperationEl && totalMissionsInOperation) {
             // Calculate operation progress percentage  
             const operationProgress = ((this.currentMissionInOperation + 1) / missionsInThisOperation) * 100;
             
             // Update text
-            currentMissionInOperation.textContent = this.currentMissionInOperation + 1;
+            currentMissionInOperationEl.textContent = this.currentMissionInOperation + 1;
             totalMissionsInOperation.textContent = missionsInThisOperation;
             
             // Animate progress bar if requested
@@ -3032,9 +3125,15 @@ class App {
 
     async displayCurrentTourMission() {
         const tour = this.currentTour;
-        const mission = tour.missions[tour.currentMissionIndex];
         
-        console.log(`Displaying mission ${tour.currentMissionIndex + 1}:`, mission);
+        // For imported campaigns, use absolute mission index; for generated campaigns, use currentMissionIndex
+        const missionIndex = this.isImportedCampaign() ? this.currentAbsoluteMissionIndex : tour.currentMissionIndex;
+        const mission = tour.missions[missionIndex];
+        
+        console.log(`Displaying mission at index ${missionIndex} (absolute: ${this.currentAbsoluteMissionIndex}, operation: ${tour.currentMissionIndex}):`, mission);
+        
+        // Capture the squad composition at the start of this mission (deep copy)
+        this.currentMissionSquad = this.getActiveSquadMembers().map(member => ({...member}));
         
         // Validate mission structure for imported tours
         if (!mission) {
@@ -3905,6 +4004,11 @@ class App {
         if (appState.currentMissionInOperation !== undefined) {
             this.currentMissionInOperation = appState.currentMissionInOperation;
         }
+        
+        // Restore current absolute mission index (for imported campaigns)
+        if (appState.currentAbsoluteMissionIndex !== undefined) {
+            this.currentAbsoluteMissionIndex = appState.currentAbsoluteMissionIndex;
+        }
     }
 
     // Campaign Export/Import functionality
@@ -3933,7 +4037,8 @@ class App {
                 squadMembers: this.squadMembers ? JSON.parse(JSON.stringify(this.squadMembers)) : [],
                 squadMemberNames: this.getSquadMemberNames(),
                 missionHistory: this.missionHistory ? JSON.parse(JSON.stringify(this.missionHistory)) : [],
-                currentMissionInOperation: this.currentMissionInOperation || 0
+                currentMissionInOperation: this.currentMissionInOperation || 0,
+                currentAbsoluteMissionIndex: this.currentAbsoluteMissionIndex || 0
             }
         };
 
@@ -4261,6 +4366,9 @@ class App {
                 await this.validateImportedCampaign(tour);
 
                 this.currentTour = tour;
+                // Reset tracking variables for imported tour
+                this.currentMissionInOperation = 0;
+                this.currentAbsoluteMissionIndex = 0;
 
                 // Show the first briefing
                 this.showDemocracyBriefing();
@@ -4790,6 +4898,9 @@ class App {
 
             // Set as current tour
             this.currentTour = tour;
+            // Reset tracking variables for imported tour
+            this.currentMissionInOperation = 0;
+            this.currentAbsoluteMissionIndex = 0;
 
             // Show briefing for imported campaign
             this.displayTourBriefing(tour);
@@ -4956,8 +5067,18 @@ class App {
 
     renderOperation(operation) {
         const container = document.getElementById('operations-container');
-        const operationElement = this.createOperationElement(operation);
-        container.appendChild(operationElement);
+        
+        // Check if operation already exists in DOM to prevent duplicates
+        const existingElement = container.querySelector(`[data-operation-id="${operation.id}"]`);
+        if (existingElement) {
+            // Replace existing element instead of duplicating
+            const newOperationElement = this.createOperationElement(operation);
+            existingElement.replaceWith(newOperationElement);
+        } else {
+            // Add new element
+            const operationElement = this.createOperationElement(operation);
+            container.appendChild(operationElement);
+        }
         
         // Ensure modifiers are properly loaded for this operation
         setTimeout(() => {
@@ -5617,19 +5738,50 @@ class App {
     }
 
     refreshBuilderUI() {
-        // Update campaign metadata
-        document.getElementById('campaign-name-input').value = campaignBuilder.campaign.name;
-        document.getElementById('campaign-description-input').value = campaignBuilder.campaign.description;
+        // Safety check: ensure campaign builder is initialized
+        if (!campaignBuilder || !campaignBuilder.campaign) {
+            console.error('Campaign builder not properly initialized');
+            return;
+        }
+        
+        // Update campaign metadata with validation
+        const nameInput = document.getElementById('campaign-name-input');
+        const descInput = document.getElementById('campaign-description-input');
+        
+        if (nameInput) {
+            nameInput.value = campaignBuilder.campaign.name || '';
+        }
+        if (descInput) {
+            descInput.value = campaignBuilder.campaign.description || '';
+        }
         
         // Clear and rebuild operations
         const container = document.getElementById('operations-container');
+        if (!container) {
+            console.error('Operations container not found');
+            return;
+        }
+        
         container.innerHTML = '';
         
-        campaignBuilder.campaign.operations.forEach(operation => {
+        // Validate operations array before processing
+        if (!Array.isArray(campaignBuilder.campaign.operations)) {
+            console.error('Campaign operations is not a valid array');
+            campaignBuilder.campaign.operations = [];
+        }
+        
+        // Re-index operations to ensure consistency
+        campaignBuilder.campaign.operations.forEach((operation, index) => {
+            if (operation.index !== index) {
+                console.log(`Fixing operation index: ${operation.index} -> ${index}`);
+                operation.index = index;
+            }
             this.renderOperation(operation);
         });
         
         this.updateValidationStatus();
+        
+        console.log(`Campaign builder UI refreshed with ${campaignBuilder.campaign.operations.length} operations`);
     }
 
     async handlePreviewCampaign() {
