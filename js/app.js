@@ -988,13 +988,60 @@ class App {
         const isVeryLastMission = isLastMissionInOperation && isLastOperationInTour;
         
         if (!isVeryLastMission) {
-            // Show squad management for the next mission
+            // First increment mission indices to point to the NEXT mission
+            this.incrementMissionIndices();
+            
+            // Now show squad management for the upcoming mission
             const proceed = await this.showSquadManagementDialog();
             if (!proceed) return;
+            
+            // Display the mission
+            this.displayMissionAfterSquadManagement();
+        } else {
+            // No squad management needed, just proceed normally
+            this.proceedToNextMission();
+        }
+    }
+
+    // Helper function to increment mission indices without display logic
+    incrementMissionIndices() {
+        const tour = this.currentTour;
+        
+        // Check if we need to move to next mission within operation or next operation
+        this.currentMissionInOperation++;
+        
+        // Get current operation's difficulty to determine how many missions it should have
+        const currentOperation = tour.missions[tour.currentMissionIndex];
+        const missionsInThisOperation = this.getMissionsPerOperation(currentOperation.difficulty.level);
+        
+        if (this.currentMissionInOperation >= missionsInThisOperation) {
+            // Move to next operation
+            this.currentMissionInOperation = 0;
+            tour.currentMissionIndex++;
+        }
+    }
+
+    // Helper function to display mission after squad management
+    displayMissionAfterSquadManagement() {
+        const tour = this.currentTour;
+        
+        if (tour.currentMissionIndex >= tour.missions.length) {
+            // Tour completed!
+            this.completeTour();
+            return;
         }
         
-        // Now proceed to the next mission
-        this.proceedToNextMission();
+        // Update dual progress indicators
+        this.updateDualProgressIndicators(tour, true);
+        
+        // Check if we moved to a new operation
+        if (this.currentMissionInOperation === 0) {
+            // Show briefing for next operation
+            this.displayNextMissionBriefing();
+        } else {
+            // Still missions remaining in current operation
+            this.displayCurrentTourMission();
+        }
     }
 
     // Legacy method for compatibility
@@ -1170,14 +1217,6 @@ class App {
         }
     }
 
-    async displayCurrentTourMissionWithSquadManagement() {
-        // Show squad management dialog first
-        const proceed = await this.showSquadManagementDialog();
-        if (!proceed) return;
-        
-        // Then display the mission
-        this.displayCurrentTourMission();
-    }
 
     displayTransitionBriefing(transitionText) {
         // Show transition text in briefing format
@@ -2970,10 +3009,21 @@ class App {
         return briefings[Math.floor(Math.random() * briefings.length)];
     }
 
-    handleAcknowledgeBriefing() {
+    async handleAcknowledgeBriefing() {
         // Hide briefing, show current mission
         document.getElementById('democracy-briefing').style.display = 'none';
         document.getElementById('current-mission-display').style.display = 'block';
+        
+        // For stats mode, show squad management dialog first
+        if (this.statsMode) {
+            const proceed = await this.showSquadManagementDialog();
+            if (!proceed) {
+                // User cancelled, show briefing again
+                document.getElementById('democracy-briefing').style.display = 'block';
+                document.getElementById('current-mission-display').style.display = 'none';
+                return;
+            }
+        }
         
         // Display current mission
         this.displayCurrentTourMission();
