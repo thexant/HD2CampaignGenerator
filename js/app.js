@@ -1008,10 +1008,20 @@ class App {
     }
 
     showStatsTrackingDialog() {
+        console.log('=== STATS DIALOG DEBUG ===');
+        console.log('statsMode:', this.statsMode);
+        console.log('squadMembers.length:', this.squadMembers.length);
+        console.log('squadMembers:', this.squadMembers);
+        console.log('isImportedCampaign:', this.currentTour?.metadata?.isImportedCampaign);
+        console.log('currentTour.metadata:', this.currentTour?.metadata);
+        
         if (!this.statsMode || !this.squadMembers.length) {
+            console.log('Early exit from stats dialog - statsMode:', this.statsMode, 'squadMembers.length:', this.squadMembers.length);
             this.proceedToNextMission();
             return;
         }
+        
+        console.log('Proceeding with stats dialog creation...');
 
         const dialog = document.getElementById('stats-tracking-dialog');
         const statsContainer = document.getElementById('stats-inputs-container');
@@ -4672,6 +4682,9 @@ class App {
 
     async importCampaignData(campaignData, fileInput) {
         try {
+            console.log('=== CAMPAIGN IMPORT DEBUG ===');
+            console.log('Importing campaign data:', campaignData);
+            
             // Validate campaign data structure
             if (!campaignData.name || !campaignData.missions || !Array.isArray(campaignData.missions)) {
                 throw new Error('Invalid campaign file format');
@@ -4683,9 +4696,11 @@ class App {
 
             // Show stats mode selection dialog
             const enableStats = await this.showStatsModeSelectionDialog(campaignData);
+            console.log('Stats mode selected:', enableStats);
             
             // Set up stats mode if selected
             if (enableStats) {
+                console.log('Setting up stats mode for imported campaign...');
                 this.enableStatsMode();
                 
                 // This is a raw campaign file (not a saved tour), so prompt for new squad member names
@@ -4704,11 +4719,20 @@ class App {
                         },
                         samples: 0,
                         deaths: 0,
-                        missionsCompleted: 0
+                        missionsCompleted: 0,
+                        status: 'active'
                     })).filter(member => member.name.length > 0);
                     console.log('Initialized squad members:', this.squadMembers);
+                    console.log('Squad members length:', this.squadMembers.length);
+                } else {
+                    console.log('No squad names provided or empty');
                 }
+            } else {
+                console.log('Stats mode not enabled for imported campaign');
             }
+            
+            console.log('Final statsMode value:', this.statsMode);
+            console.log('Final squadMembers:', this.squadMembers);
 
             // Convert campaign data to tour format
             const tour = {
