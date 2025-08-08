@@ -1151,6 +1151,9 @@ class App {
             return;
         }
 
+        // Update current mission squad to include any newly added members
+        this.currentMissionSquad = this.getActiveSquadMembers().map(member => ({...member}));
+
         const dialog = document.getElementById('stats-tracking-dialog');
         const statsContainer = document.getElementById('stats-inputs-container');
         const tour = this.currentTour;
@@ -4002,6 +4005,37 @@ class App {
         // Restore squad member stats data
         if (appState.squadMembers && Array.isArray(appState.squadMembers)) {
             this.squadMembers = appState.squadMembers;
+        }
+        
+        // Sync squadMembers with current squad member names to include newly added players
+        if (this.statsMode) {
+            const currentSquadNames = this.getSquadMemberNames().filter(name => name.length > 0);
+            
+            // Initialize squadMembers array if it doesn't exist
+            if (!this.squadMembers) {
+                this.squadMembers = [];
+            }
+            
+            // Add any new players that exist in squad names but not in squadMembers
+            currentSquadNames.forEach(name => {
+                const existingMember = this.squadMembers.find(member => member.name === name);
+                if (!existingMember) {
+                    this.squadMembers.push({
+                        name: name,
+                        status: 'active',
+                        totalKills: 0,
+                        totalSamples: 0,
+                        totalDeaths: 0,
+                        missionsCompleted: 0,
+                        missionStats: []
+                    });
+                }
+            });
+            
+            // Remove players that no longer exist in squad names
+            this.squadMembers = this.squadMembers.filter(member => 
+                currentSquadNames.includes(member.name)
+            );
         }
         
         // Restore mission history
