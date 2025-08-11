@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HELLDIVERS 2 Campaign Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>HELLDIVERS 2 Campaign Generator - v2</h1>
+        <p>Generate or create multi-operation campaigns using live galactic war data</p>
+    </header>
+
+    <main>
+        <section class="generator-controls">
+            <div class="preferences-header">
+                <h2>Campaign Preferences</h2>
+                <button id="toggle-preferences" class="toggle-btn" aria-expanded="true">Hide Preferences</button>
+            </div>
+            
+            <div id="preferences-content" class="preferences-content">
+            
+            <!-- Tour of War Mode - Always Enabled (Hidden) -->
+            <div class="preference-group tour-mode-group" style="display: none;">
+                <div class="tour-mode-toggle">
+                    <input type="checkbox" id="tour-mode-checkbox" checked>
+                    <label for="tour-mode-checkbox">
+                        <span class="tour-mode-label">Tour of War Mode</span>
+                        <span class="tour-mode-status" id="tour-mode-status">ON</span>
+                    </label>
+                    <button id="tour-mode-activate" class="tour-activate-btn">Activate Tour</button>
+                </div>
+                <p class="tour-mode-description">Experience guided mission-by-mission progression with briefings</p>
+            </div>
+
+            <div class="preference-group" id="campaign-length-group" style="display: none;">
+                <label for="campaign-length">Campaign Length:</label>
+                <select id="campaign-length">
+                    <option value="random">Random (2-6 operations)</option>
+                    <option value="1">Quick (1 operation)</option>
+                    <option value="2">Short (2 operations)</option>
+                    <option value="3">Short (3 operations)</option>
+                    <option value="4">Regular (4 operations)</option>
+                    <option value="5">Regular (5 operations)</option>
+                    <option value="6">Regular (6 operations)</option>
+                    <option value="7">Long (7 operations)</option>
+                    <option value="8">Long (8 operations)</option>
+                    <option value="9">Long (9 operations)</option>
+                    <option value="10">Legendary (10 operations)</option>
+                    <option value="11">Legendary (11 operations)</option>
+                    <option value="12">Legendary (12 operations)</option>
+                    <option value="custom">Custom Length</option>
+                </select>
+            </div>
+
+            <!-- Tour Length Selection -->
+            <div class="preference-group" id="tour-length-group">
+                <label for="tour-length">Tour Length:</label>
+                <select id="tour-length">
+                    <option value="quick">Quick (1 operation)</option>
+                    <option value="short">Short (2-3 operations)</option>
+                    <option value="regular" selected>Regular (4-6 operations)</option>
+                    <option value="long">Long (7-9 operations)</option>
+                    <option value="legendary">Legendary (10-12 operations)</option>
+                    <option value="custom">Custom Length</option>
+                </select>
+            </div>
+
+            <div class="preference-group" id="custom-tour-length-group" style="display: none;">
+                <label for="custom-tour-length-input">Custom Tour Length (1-50 operations):</label>
+                <input type="number" id="custom-tour-length-input" min="1" max="50" value="6">
+            </div>
+
+            <!-- Stats Mode Toggle -->
+            <div class="preference-group" id="stats-mode-group">
+                <div class="stats-mode-toggle">
+                    <input type="checkbox" id="stats-mode-checkbox">
+                    <label for="stats-mode-checkbox">
+                        <span class="stats-mode-label">Stats Mode</span>
+                        <span class="stats-mode-status" id="stats-mode-status">OFF</span>
+                    </label>
+                </div>
+                <p class="stats-mode-description">Track squad member statistics (kills, samples, deaths) throughout your tour</p>
+                
+            </div>
+
+            <!-- Custom Campaign Name -->
+            <div class="preference-group" id="custom-campaign-name-group">
+                <label for="custom-campaign-name">Custom Campaign Name (Optional):</label>
+                <input type="text" id="custom-campaign-name" placeholder="Leave empty for random name..." maxlength="100">
+                <small class="utility-description">If provided, this name will be used instead of the generated campaign name</small>
+            </div>
+
+            <!-- Tour Theme Selection -->
+            <div class="preference-group" id="tour-theme-group">
+                <label for="tour-theme">Tour Theme:</label>
+                <select id="tour-theme">
+                    <option value="random" selected>Random Theme</option>
+                    <option value="major_order">Major Order (Current Objectives)</option>
+                    <option value="single_planet">Single Planet Conquest</option>
+                    <option value="sector_campaign">Sector Campaign</option>
+                    <option value="faction_focused">Faction Focus</option>
+                    <option value="biome_specific">Environmental Focus</option>
+                    <option value="biome_group_themed">Biome Group Focus</option>
+                    <option value="custom">Custom (Configure Filters)</option>
+                </select>
+            </div>
+
+            <!-- Major Order Info (shown only when major_order theme is selected) -->
+            <div class="preference-group" id="major-order-info-group" style="display: none;">
+                <div class="major-order-info">
+                    <h4 id="major-order-title">Loading Major Order...</h4>
+                    <p id="major-order-briefing" class="major-order-briefing"></p>
+                    <p id="major-order-status" class="major-order-status"></p>
+                </div>
+            </div>
+
+            <!-- Tour Difficulty Selection -->
+            <div class="preference-group" id="tour-difficulty-group">
+                <label for="tour-difficulty">Tour Difficulty:</label>
+                <select id="tour-difficulty">
+                    <option value="all" selected>All Difficulties (1-10)</option>
+                    <option value="easy">Easy (1-4)</option>
+                    <option value="medium">Medium (3-6)</option>
+                    <option value="hard">Hard (6-10)</option>
+                    <option value="random">Random Setting</option>
+                </select>
+            </div>
+
+            <!-- Faction Preference Selection -->
+            <div class="preference-group" id="tour-faction-preference-group">
+                <label for="tour-faction-preference">Faction Preference:</label>
+                <select id="tour-faction-preference">
+                    <option value="any" selected>Any Available Faction</option>
+                    <option value="Terminids">Terminids Only</option>
+                    <option value="Automatons">Automatons Only</option>
+                    <option value="Illuminate">Illuminate Only</option>
+                </select>
+            </div>
+
+            <!-- Mission Type Preference Selection -->
+            <div class="preference-group" id="tour-mission-type-preference-group">
+                <label for="tour-mission-type-preference">Mission Type Preference:</label>
+                <select id="tour-mission-type-preference">
+                    <option value="either" selected>Either (Mixed)</option>
+                    <option value="liberation">Liberation Focus</option>
+                    <option value="defense">Defense Focus</option>
+                </select>
+            </div>
+
+            <!-- Stats Mode Squad Names -->
+            <div class="preference-group" id="squad-names-group" style="display: none;">
+                <label>Squad Member Names (up to 4):</label>
+                <div class="squad-names-inputs">
+                    <input type="text" id="squad-member-1" placeholder="Squad Member 1" maxlength="30">
+                    <input type="text" id="squad-member-2" placeholder="Squad Member 2" maxlength="30">
+                    <input type="text" id="squad-member-3" placeholder="Squad Member 3" maxlength="30">
+                    <input type="text" id="squad-member-4" placeholder="Squad Member 4" maxlength="30">
+                </div>
+            </div>
+
+
+            <!-- Faction Selection (shown only when faction_focused theme is selected) -->
+            <div class="preference-group" id="tour-faction-group" style="display: none;">
+                <label for="tour-faction">Enemy Faction:</label>
+                <select id="tour-faction">
+                    <option value="random">Any Available Faction</option>
+                    <option value="Terminids">Terminids</option>
+                    <option value="Automatons">Automatons</option>
+                    <option value="Illuminate">Illuminate</option>
+                </select>
+            </div>
+
+            <!-- Planet Selection (shown only when single_planet theme is selected) -->
+            <div class="preference-group" id="tour-planet-group" style="display: none;">
+                <label for="tour-planet">Specific Planet:</label>
+                <select id="tour-planet">
+                    <option value="random">Random Available Planet</option>
+                    <!-- Planet options will be populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Sector Selection (shown only when sector_campaign theme is selected) -->
+            <div class="preference-group" id="tour-sector-group" style="display: none;">
+                <label for="tour-sector">Target Sector:</label>
+                <select id="tour-sector">
+                    <option value="random">Any Available Sector</option>
+                    <!-- Sector options will be populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Custom Theme Filters (shown only when custom theme is selected) -->
+            <div class="preference-group" id="custom-filters-group" style="display: none;">
+                <div class="custom-filters-header">
+                    <h4>Custom Theme Configuration</h4>
+                    <p class="filter-description">Select planets, sectors, or factions for your campaign. Filters apply in priority order: <strong>Planets → Sectors → Factions</strong></p>
+                </div>
+                
+                <!-- Planet Filters -->
+                <div class="filter-section">
+                    <label class="filter-label">
+                        <span class="filter-title">Planets (Highest Priority)</span>
+                        <span class="filter-subtitle">Select specific planets for your campaign</span>
+                    </label>
+                    <div class="checkbox-container" id="custom-planets-container">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-planet-all" value="all">
+                            <label for="custom-planet-all">Any Available Planet</label>
+                        </div>
+                        <!-- Planet checkboxes will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Sector Filters -->
+                <div class="filter-section">
+                    <label class="filter-label">
+                        <span class="filter-title">Sectors (Medium Priority)</span>
+                        <span class="filter-subtitle">Select sectors to limit planet selection</span>
+                    </label>
+                    <div class="checkbox-container" id="custom-sectors-container">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-sector-all" value="all">
+                            <label for="custom-sector-all">Any Available Sector</label>
+                        </div>
+                        <!-- Sector checkboxes will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Faction Filters -->
+                <div class="filter-section">
+                    <label class="filter-label">
+                        <span class="filter-title">Factions (Lowest Priority)</span>
+                        <span class="filter-subtitle">Select enemy factions to fight against</span>
+                    </label>
+                    <div class="checkbox-container" id="custom-factions-container">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-all" value="all" checked>
+                            <label for="custom-faction-all">Any Available Faction</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-terminids" value="Terminids">
+                            <label for="custom-faction-terminids">Terminids</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-automatons" value="Automatons">
+                            <label for="custom-faction-automatons">Automatons</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="custom-faction-illuminate" value="Illuminate">
+                            <label for="custom-faction-illuminate">Illuminate</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-validation" id="custom-filter-validation" style="display: none;">
+                    <p class="validation-message">⚠️ Please select at least one filter option to continue</p>
+                </div>
+            </div>
+
+            <div class="preference-group" id="custom-length-group" style="display: none;">
+                <label for="custom-length-input">Custom Length (1-50 operations):</label>
+                <input type="number" id="custom-length-input" min="1" max="50" value="5">
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="faction-preference">Enemy Faction:</label>
+                <select id="faction-preference">
+                    <option value="random">Random</option>
+                    <option value="mixed">Mixed Factions</option>
+                    <option value="Terminids">Terminids Only</option>
+                    <option value="Automatons">Automatons Only</option>
+                    <option value="Illuminate">Illuminate Only</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="difficulty-preference">Difficulty Range:</label>
+                <select id="difficulty-preference">
+                    <option value="random">Any Difficulty</option>
+                    <option value="1-3">Trivial to Challenging (1-3)</option>
+                    <option value="4-6">Hard to Extreme (4-6)</option>
+                    <option value="7-10">Suicide to Super Helldive (7-10)</option>
+                    <option value="fixed">Same Difficulty All Missions</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="biome-preference">Planet Biomes:</label>
+                <select id="biome-preference">
+                    <option value="random">Any Biome</option>
+                    <option value="varied">Varied Biomes</option>
+                    <option value="desert">Desert Worlds</option>
+                    <option value="forest">Forest Worlds</option>
+                    <option value="ice">Ice Worlds</option>
+                    <option value="swamp">Swamp Worlds</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="mission-type-preference">Mission Type:</label>
+                <select id="mission-type-preference">
+                    <option value="both">Both Liberation & Defense</option>
+                    <option value="liberation">Liberation Only</option>
+                    <option value="defense">Defense Only</option>
+                </select>
+            </div>
+
+            <div class="preference-group" style="display: none;">
+                <label for="target-type-preference">Target Type:</label>
+                <select id="target-type-preference">
+                    <option value="mixed">Planets & Cities</option>
+                    <option value="planets">Planets Only</option>
+                    <option value="cities">Cities Only</option>
+                </select>
+            </div>
+            </div>
+
+            <div class="campaign-actions">
+                <button id="generate-campaign" class="generate-btn" style="display: none;">Generate Campaign</button>
+                <button id="start-tour" class="generate-btn">Start Tour</button>
+                <button id="import-campaign-main" class="retry-btn">Import Campaign</button>
+                <input type="file" id="import-campaign-main-file" accept=".json" style="display: none;">
+                <div id="background-loading-indicator" class="background-loading-indicator" style="display: none;">
+                    <small>📡 Updating galactic war data...</small>
+                </div>
+                <button id="regenerate-campaign" class="regenerate-btn" style="display: none;">Regenerate Campaign</button>
+                <button id="clear-cache" class="retry-btn" onclick="apiService.clearCache()" style="margin-left: 10px;">Clear Cache & Force Refresh</button>
+            </div>
+
+            <div class="utilities-section">
+                <details class="utilities-details">
+                    <summary class="utilities-summary">Advanced Tools</summary>
+                    <div class="utilities-content">
+                        <button id="campaign-builder" class="utility-btn">Campaign Builder</button>
+                        <small class="utility-description">Create custom campaigns with per-operation control</small>
+                        <button id="view-results" class="utility-btn">View Results</button>
+                        <small class="utility-description">Import and compare results from completed tours</small>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <section class="campaign-display" id="campaign-display" style="display: none;">
+            <div class="campaign-header">
+                <h2 id="campaign-name">Operation: [Campaign Name]</h2>
+                <p id="campaign-description" class="campaign-description" style="display: none;">
+                    [Campaign description will appear here]
+                </p>
+                <p id="campaign-main-goal">Main Goal: [Campaign objective]</p>
+                <div id="campaign-backstory" class="backstory">
+                    [Campaign backstory will appear here]
+                </div>
+            </div>
+
+            <div class="missions-container" id="missions-container">
+                <!-- Missions will be dynamically generated here -->
+            </div>
+
+            <div class="campaign-footer">
+                <p class="small-text">Campaign generated using live HELLDIVERS 2 galactic war data</p>
+                <p class="small-text">Planet availability subject to change based on current war status</p>
+            </div>
+        </section>
+
+        <!-- Tour of War Display -->
+        <section class="tour-display" id="tour-display" style="display: none;">
+            <!-- Democracy Officer Briefing -->
+            <div class="democracy-briefing" id="democracy-briefing" style="display: none;">
+                <div class="briefing-header">
+                    <h3>Briefing</h3>
+                </div>
+                <div class="briefing-content" id="briefing-content">
+                    [Briefing content will appear here]
+                </div>
+                <div class="briefing-actions">
+                    <button id="acknowledge-briefing" class="generate-btn">Acknowledged, Sir!</button>
+                </div>
+            </div>
+
+            <!-- Current Mission Display -->
+            <div class="current-mission-display" id="current-mission-display">
+                <div class="tour-progress">
+                    <div class="tour-info">
+                        <h2 id="tour-name">Tour of War: [Tour Name]</h2>
+                        <p id="tour-description" class="tour-description" style="display: none;">
+                            [Campaign description will appear here]
+                        </p>
+                        <div class="dual-progress-container">
+                            <!-- Campaign Level Progress -->
+                            <div class="campaign-progress">
+                                <div class="progress-label">Campaign Progress</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar campaign-progress-bar" id="campaign-progress-bar">
+                                        <div class="progress-fill" id="campaign-progress-fill"></div>
+                                    </div>
+                                    <span class="progress-text">Operation <span id="current-mission-number">1</span> of <span id="total-missions">6</span></span>
+                                </div>
+                            </div>
+                            
+                            <!-- Operation Level Progress -->
+                            <div class="operation-progress">
+                                <div class="progress-label">Current Operation</div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar operation-progress-bar" id="operation-progress-bar">
+                                        <div class="progress-fill" id="operation-progress-fill"></div>
+                                    </div>
+                                    <span class="progress-text">Mission <span id="current-mission-in-operation">1</span> of <span id="total-missions-in-operation">3</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="current-mission-container" id="current-mission-container">
+                    <!-- Current mission will be displayed here -->
+                </div>
+
+                <div class="tour-actions">
+                    <button id="mission-complete" class="progress-btn" style="display: none;">Operation Complete - Progress Tour</button>
+                    <button id="mission-failed" class="fail-btn" style="display: none;">Operation Failed</button>
+                    <div class="tour-management-buttons">
+                        <button id="export-tour" class="retry-btn">Export Tour</button>
+                        <button id="export-campaign-from-tour" class="retry-btn" style="display: none;">Export Campaign Structure</button>
+                        <button id="import-tour" class="retry-btn">Import Tour</button>
+                        <input type="file" id="import-tour-file" accept=".json" style="display: none;">
+                    </div>
+                    <button id="abandon-tour" class="retry-btn">Abandon Tour</button>
+                </div>
+            </div>
+
+            <!-- Tour Completion Screen -->
+            <div class="tour-completion" id="tour-completion" style="display: none;">
+                <div class="completion-header">
+                    <h2>Tour of War Complete!</h2>
+                    <h3 id="completed-tour-name">[Tour Name]</h3>
+                </div>
+                <div class="completion-content">
+                    <p class="completion-message">Your Tour of War is complete, Helldiver. Through multiple campaigns and countless sacrifices, you have proven that Democracy's defenders are truly unstoppable.</p>
+                    <div class="completion-stats" id="completion-stats">
+                        <!-- Tour stats will be displayed here -->
+                    </div>
+                    <div class="completion-message-final">
+                        <p><strong>Your victories across multiple worlds have demonstrated the true power of Managed Democracy. Each battlefield you conquered brought Freedom to those who had forgotten its meaning.</strong></p>
+                        <p><em>"The Ministry of Truth records your achievements for future generations. You have shown that when Democracy calls, her children answer with unwavering resolve."</em></p>
+                    </div>
+                </div>
+                <div class="completion-actions">
+                    <button id="start-new-tour" class="generate-btn">Start New Tour</button>
+                    <button id="return-to-campaigns" class="retry-btn">Return to Campaign Generator</button>
+                </div>
+            </div>
+
+            <!-- Tour Failure Screen -->
+            <div class="tour-failure" id="tour-failure" style="display: none;">
+                <div class="failure-header">
+                    <h2>Tour of War Failed</h2>
+                    <h3 id="failed-tour-name">[Tour Name]</h3>
+                </div>
+                <div class="failure-content">
+                    <p class="failure-message">Your Tour of War has ended in defeat, Helldiver. The forces of tyranny have prevailed this day, but Democracy's cause endures beyond any single campaign.</p>
+                    <div class="failure-stats" id="failure-stats">
+                        <!-- Tour failure stats will be displayed here -->
+                    </div>
+                    <div class="failure-message-final">
+                        <p><strong>This setback does not diminish your service to Super Earth. Every battle teaches us something about the nature of our enemies and the price of Freedom.</strong></p>
+                        <p><em>"Return to training, Helldiver. Study this defeat, learn from it, and when you are ready, Democracy will call upon you again. The war for Liberty is measured not in days, but in generations."</em></p>
+                    </div>
+                </div>
+                <div class="failure-actions">
+                    <button id="retry-tour" class="generate-btn">Retry Tour</button>
+                    <button id="return-to-campaigns-failed" class="retry-btn">Return to Campaign Generator</button>
+                </div>
+            </div>
+
+            <!-- Stats Tracking Dialog -->
+            <div class="stats-tracking-dialog" id="stats-tracking-dialog" style="display: none;">
+                <div class="dialog-header">
+                    <h3 id="stats-dialog-title">Mission Report: Statistics</h3>
+                </div>
+                <div class="dialog-content">
+                    <p id="stats-dialog-description">Enter statistics for each squad member during this mission (leave blank to skip):</p>
+                    <div class="stats-inputs-container" id="stats-inputs-container">
+                        <!-- Stats inputs for each squad member and mission will be dynamically generated -->
+                    </div>
+                </div>
+                <div class="dialog-actions">
+                    <button id="confirm-stats" class="generate-btn">Confirm</button>
+                    <button id="skip-stats" class="retry-btn">Skip Stats Entry</button>
+                </div>
+            </div>
+
+
+
+
+            <!-- Stats Completion Screen -->
+            <div class="stats-completion" id="stats-completion" style="display: none;">
+                <div class="completion-header">
+                    <h2>Tour of War Complete!</h2>
+                    <h3 id="stats-completed-tour-name">[Tour Name]</h3>
+                </div>
+                <div class="completion-content">
+                    <p class="completion-message">Your Tour of War is complete, Helldiver. Through multiple campaigns and countless sacrifices, you have proven that Democracy's defenders are truly unstoppable.</p>
+                    
+                    <div class="completion-stats" id="stats-completion-stats">
+                        <!-- Tour stats will be displayed here -->
+                    </div>
+
+
+                    
+                    <div class="completion-message-final">
+                        <p><strong>Your victories across multiple worlds have demonstrated the true power of Managed Democracy. Each battlefield you conquered brought Freedom to those who had forgotten its meaning.</strong></p>
+                        <p><em>"The Ministry of Truth records your achievements for future generations. You have shown that when Democracy calls, her children answer with unwavering resolve."</em></p>
+                    </div>
+                </div>
+                <div class="completion-actions">
+                    <button id="export-results" class="retry-btn">Export Results</button>
+                    <button id="start-new-stats-tour" class="generate-btn">Start New Tour</button>
+                    <button id="return-to-campaigns-stats" class="retry-btn">Return to Campaign Generator</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Campaign Builder Section -->
+        <section class="campaign-builder" id="campaign-builder-section" style="display: none;">
+            <div class="builder-header">
+                <h2>Campaign Builder</h2>
+                <p>Create custom campaigns with full control over each operation</p>
+                <button id="back-to-generator" class="retry-btn">← Back to Generator</button>
+            </div>
+
+            <div class="campaign-metadata">
+                <div class="metadata-group">
+                    <label for="campaign-name-input">Campaign Name:</label>
+                    <input type="text" id="campaign-name-input" placeholder="Enter campaign name..." maxlength="100">
+                </div>
+                <div class="metadata-group">
+                    <label for="campaign-description-input">Campaign Description:</label>
+                    <textarea id="campaign-description-input" placeholder="Describe your campaign..." rows="3" maxlength="500"></textarea>
+                </div>
+            </div>
+
+            <div class="operations-section">
+                <div class="operations-header">
+                    <h3>Operations</h3>
+                    <button id="add-operation-btn" class="generate-btn">+ Add Operation</button>
+                </div>
+                
+                <div id="operations-container" class="operations-container">
+                    <!-- Operations will be dynamically added here -->
+                </div>
+            </div>
+
+            <div class="builder-actions">
+                <button id="preview-campaign" class="retry-btn">Preview Campaign</button>
+                <button id="export-custom-campaign" class="generate-btn">Export Campaign</button>
+                <button id="import-custom-campaign" class="retry-btn">Import Campaign</button>
+                <input type="file" id="import-custom-file" accept=".json" style="display: none;">
+                <button id="reset-builder" class="retry-btn">Reset</button>
+            </div>
+
+            <div class="validation-status" id="builder-validation" style="display: none;">
+                <!-- Validation messages will appear here -->
+            </div>
+        </section>
+
+        <!-- Results Viewer Section -->
+        <section class="results-viewer" id="results-viewer-section" style="display: none;">
+            <div class="results-header">
+                <h2>Results Viewer</h2>
+                <p>Import and compare results from completed tours</p>
+                <button id="back-to-generator-results" class="retry-btn">← Back to Generator</button>
+            </div>
+
+            <div class="results-import-section">
+                <div class="import-options">
+                    <div class="import-option">
+                        <button id="import-single-results" class="generate-btn">Import Single Result</button>
+                        <input type="file" id="import-single-results-file" accept=".json" style="display: none;">
+                        <small class="utility-description">View results from a single completed tour</small>
+                    </div>
+                    <div class="import-option">
+                        <button id="import-multiple-results" class="generate-btn">Import Multiple Results</button>
+                        <input type="file" id="import-multiple-results-file" accept=".json" multiple style="display: none;">
+                        <small class="utility-description">Compare results from multiple groups or runs</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-display-section" id="results-display-section" style="display: none;">
+                <div class="results-mode-selector">
+                    <button id="single-view-mode" class="mode-btn active">Single View</button>
+                    <button id="comparison-view-mode" class="mode-btn">Comparison View</button>
+                </div>
+
+                <!-- Single Result View -->
+                <div class="single-result-view" id="single-result-view">
+                    <div class="result-header">
+                        <h3 id="single-result-name">Tour Name</h3>
+                        <div class="result-metadata" id="single-result-metadata">
+                            <!-- Tour metadata will be displayed here -->
+                        </div>
+                    </div>
+                    <div class="result-stats" id="single-result-stats">
+                        <!-- Single result stats will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Comparison View -->
+                <div class="comparison-view" id="comparison-view" style="display: none;">
+                    <div class="comparison-header">
+                        <h3>Results Comparison</h3>
+                        <div class="group-management">
+                            <div class="group-list" id="group-list">
+                                <!-- Groups will be listed here -->
+                            </div>
+                            <div class="group-controls">
+                                <button id="add-group" class="generate-btn" style="display: none;">Add Group</button>
+                                <button id="clear-all-groups" class="retry-btn">Clear All</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="comparison-stats" id="comparison-stats">
+                        <!-- Comparison stats table will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group Name Modal -->
+            <div class="group-name-modal" id="group-name-modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Name This Group</h3>
+                    </div>
+                    <div class="modal-body">
+                        <label for="group-name-input">Group Name:</label>
+                        <input type="text" id="group-name-input" placeholder="Enter group name..." maxlength="50">
+                        <small class="utility-description">This name will be used to identify this set of results in comparisons</small>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirm-group-name" class="generate-btn">Confirm</button>
+                        <button id="cancel-group-name" class="retry-btn">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Campaign Builder Preview Modal -->
+        <div class="builder-preview-modal" id="builder-preview-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Campaign Preview</h3>
+                    <button id="close-preview" class="close-btn">×</button>
+                </div>
+                <div class="modal-body" id="preview-content">
+                    <!-- Preview content will be generated here -->
+                </div>
+                <div class="modal-actions">
+                    <button id="start-custom-tour" class="generate-btn">Start This Campaign</button>
+                    <button id="close-preview-2" class="retry-btn">Close Preview</button>
+                </div>
+            </div>
+        </div>
+
+        <section class="loading" id="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Fetching live galactic war data...</p>
+        </section>
+
+        <section class="error" id="error" style="display: none;">
+            <h3>Error</h3>
+            <p id="error-message">Failed to generate campaign. Please try again.</p>
+            <button id="retry-btn" class="retry-btn">Retry</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>Unofficial HELLDIVERS 2 Tool | Made by vetaso</p>
+    </footer>
+
+    <script src="data/mission-types.js"></script>
+    <script src="data/city-mappings.js"></script>
+    <!-- Uncomment when you've filled in real mission data -->
+    <!-- <script src="data/real-mission-types-template.js"></script> -->
+    <script src="js/api-service.js"></script>
+    <script src="js/mission-generator.js"></script>
+    <script src="js/narrative-generator.js"></script>
+    <script src="js/campaign-generator.js"></script>
+    <script src="js/campaign-builder.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Override methods to maintain always-on tour mode
+        document.addEventListener('DOMContentLoaded', () => {
+            // Force tour mode to be enabled from the start
+            if (window.app) {
+                // Set tour mode to true initially
+                app.tourMode = true;
+                
+                // Override the handleReturnToCampaigns method to maintain always-on tour mode
+                const originalReturnToCampaigns = app.handleReturnToCampaigns;
+                app.handleReturnToCampaigns = function() {
+                    this.currentTour = null;
+                    // DO NOT disable tour mode - keep it always on
+                    
+                    // Keep tour mode checkbox checked and maintain state
+                    const tourCheckbox = document.getElementById('tour-mode-checkbox');
+                    if (tourCheckbox) {
+                        tourCheckbox.checked = true;
+                    }
+                    
+                    // Hide tour display screens
+                    document.getElementById('tour-display').style.display = 'none';
+                    document.getElementById('democracy-briefing').style.display = 'none';
+                    document.getElementById('tour-completion').style.display = 'none';
+                    document.getElementById('tour-failure').style.display = 'none';
+                    
+                    // Show campaign display if it was visible
+                    const campaignDisplay = document.getElementById('campaign-display');
+                    if (campaignDisplay && campaignDisplay.style.display === 'block') {
+                        campaignDisplay.style.display = 'block';
+                    }
+                };
+                
+                // Override handleTourModeToggle to prevent disabling
+                const originalTourModeToggle = app.handleTourModeToggle;
+                app.handleTourModeToggle = function(event) {
+                    // Force the checkbox to stay checked
+                    event.target.checked = true;
+                    this.tourMode = true;
+                    
+                    // Call original function but ensure tour mode stays on
+                    originalTourModeToggle.call(this, event);
+                    
+                    // Force tour mode back to true after original function
+                    this.tourMode = true;
+                };
+            }
+        });
+    </script>
+</body>
+</html>
