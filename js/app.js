@@ -2804,15 +2804,20 @@ class App {
 
         // Define difficulty ranges
         const difficultyRanges = {
-            'easy': { min: 1, max: 4 },
-            'medium': { min: 3, max: 6 },
-            'hard': { min: 6, max: 10 },
+            'easy': { min: 1, max: 3 },
+            'medium': { min: 4, max: 6 },
+            'hard': { min: 7, max: 10 },
             'all': { min: 1, max: 10 }
         };
 
         const range = difficultyRanges[difficultyPreference] || difficultyRanges['all'];
         
-        // Linear scaling within the selected range
+        // For single missions, randomly select from the entire difficulty range
+        if (totalMissions === 1) {
+            return range.min + Math.floor(Math.random() * (range.max - range.min + 1));
+        }
+        
+        // Linear scaling within the selected range for multi-mission campaigns
         const progress = missionIndex / (totalMissions - 1);
         
         // Base difficulty scales from min to max within range
