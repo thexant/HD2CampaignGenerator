@@ -173,7 +173,10 @@ class MissionGenerator {
         
         // Default escalating difficulty for regular campaigns
         let baseLevel;
-        if (totalMissions <= 3) {
+        if (totalMissions === 1) {
+            // Special case for single mission to avoid division by zero
+            baseLevel = 3; // Default to medium difficulty
+        } else if (totalMissions <= 3) {
             baseLevel = 2 + Math.floor(missionIndex * 2);
         } else {
             baseLevel = 1 + Math.floor((missionIndex / (totalMissions - 1)) * 6);
